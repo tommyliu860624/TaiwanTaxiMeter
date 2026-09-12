@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>台灣計程車模擬跳表機 (橫式車機專業版) | Taiwan Taxi Meter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>台灣計程車跳表機 (橫式專用版) | Taiwan Taxi Meter</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,12 +20,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   
   <style>
-    body {
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      background-color: #050608;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
-      background-color: #090a0f;
     }
     
     /* 擬真 7段 LED / 車用儀表字體 */
@@ -35,24 +45,39 @@
     }
     
     /* 發光效果 */
-    .glow-red { text-shadow: 0 0 14px rgba(239, 68, 68, 0.8), 0 0 30px rgba(239, 68, 68, 0.45); }
-    .glow-green { text-shadow: 0 0 10px rgba(34, 197, 94, 0.8), 0 0 22px rgba(34, 197, 94, 0.4); }
-    .glow-amber { text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 22px rgba(245, 158, 11, 0.4); }
+    .glow-red { text-shadow: 0 0 12px rgba(239, 68, 68, 0.8), 0 0 24px rgba(239, 68, 68, 0.4); }
+    .glow-green { text-shadow: 0 0 8px rgba(34, 197, 94, 0.8), 0 0 18px rgba(34, 197, 94, 0.35); }
+    .glow-amber { text-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 18px rgba(245, 158, 11, 0.35); }
     
     /* 深色車機面板 */
     .led-panel {
-      background: radial-gradient(circle at center, #151720 0%, #090a0d 100%);
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.9), 0 4px 20px rgba(0,0,0,0.6);
+      background: radial-gradient(circle at center, #151720 0%, #08090d 100%);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.5);
     }
 
-    /* 實體車機消光黑金屬質感外殼 */
+    /* 實體車機金屬消光黑外殼 */
     .meter-case {
-      background: linear-gradient(180deg, #27272a 0%, #18181b 50%, #09090b 100%);
-      border: 3px solid #3f3f46;
-      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+      background: linear-gradient(180deg, #242427 0%, #151518 50%, #09090b 100%);
+      border: 2px solid #38383e;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.12);
     }
 
-    /* 收據熱感應紙質感與鋸齒邊緣 */
+    /* iPhone 橫向 Safe Area 適配 */
+    .safe-padding {
+      padding-left: max(0.75rem, env(safe-area-inset-left));
+      padding-right: max(0.75rem, env(safe-area-inset-right));
+      padding-top: max(0.35rem, env(safe-area-inset-top));
+      padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+    }
+
+    /* 直式提示遮罩：若使用者拿直式會提示旋轉 */
+    @media screen and (orientation: portrait) {
+      #portrait-warning {
+        display: flex !important;
+      }
+    }
+
+    /* 收據熱感應紙質感與鋸齒 */
     .receipt-paper {
       background-color: #f8fafc;
       color: #0f172a;
@@ -78,303 +103,295 @@
       background-position: left bottom;
     }
 
-    .receipt-map-wrapper {
-      filter: grayscale(100%) contrast(1.2) sepia(10%);
-    }
-
-    .leaflet-control-attribution { display: none !important; }
-    
     /* 列印動畫 */
     #print-paper { transform: translateY(-100%); }
-    .print-animate { transform: translateY(20px) !important; transition: transform 2.5s linear; }
+    .print-animate { transform: translateY(20px) !important; transition: transform 2.2s linear; }
   </style>
 </head>
-<body class="text-zinc-100 min-h-screen flex flex-col justify-between overflow-x-hidden p-2 sm:p-4">
+<body class="text-zinc-100 h-screen h-[100dvh] flex flex-col justify-between overflow-hidden safe-padding">
 
-  <!-- 頂部迷你狀態欄 -->
-  <header class="w-full max-w-5xl mx-auto flex items-center justify-between pb-2 text-xs text-zinc-400">
+  <!-- 鎖定橫向提示遮罩 (當拿直時強制提示旋轉) -->
+  <div id="portrait-warning" class="fixed inset-0 bg-black/95 z-[90] hidden flex-col items-center justify-center p-6 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 animate-bounce">
+      <i data-lucide="smartphone" class="w-9 h-9 rotate-90"></i>
+    </div>
+    <h2 class="text-lg font-bold text-white mb-2">請將手機旋轉為橫向</h2>
+    <p class="text-xs text-zinc-400 max-w-xs leading-relaxed">
+      本車機專為真實橫式座艙與 iPhone 16 Pro 滿版設計，旋轉手機即可享受無滾動的專業跳表體驗。
+    </p>
+  </div>
+
+  <!-- 頂部極簡狀態列 -->
+  <header class="w-full flex items-center justify-between py-1 text-xs text-zinc-400 flex-shrink-0">
     <div class="flex items-center gap-2">
-      <span class="flex h-2.5 w-2.5 relative">
+      <span class="flex h-2 w-2 relative">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
       </span>
-      <span class="font-bold tracking-wider text-yellow-400 flex items-center gap-1">
-        <i data-lucide="gauge" class="w-4 h-4 text-yellow-400"></i>
+      <span class="font-bold tracking-wider text-amber-400 flex items-center gap-1 text-[11px] sm:text-xs">
+        <i data-lucide="gauge" class="w-3.5 h-3.5 text-amber-400"></i>
         TAIWAN TAXI METER
       </span>
+      <span class="text-[10px] text-zinc-500 font-mono hidden sm:inline-block">| PRO LANDSCAPE</span>
     </div>
 
-    <div class="flex items-center space-x-2">
-      <button id="btn-wake-lock" title="保持螢幕常亮" class="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-amber-400 transition-colors">
-        <i data-lucide="sun" class="w-4 h-4"></i>
+    <div class="flex items-center space-x-1.5">
+      <button id="btn-wake-lock" title="保持螢幕常亮" class="p-1 rounded-lg bg-zinc-800/80 text-zinc-400 hover:text-amber-400 transition-colors">
+        <i data-lucide="sun" class="w-3.5 h-3.5"></i>
       </button>
-      <button id="btn-sound-toggle" title="跳表嗶聲開關" class="p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:text-amber-300 transition-colors">
-        <i data-lucide="volume-2" class="w-4 h-4" id="sound-icon"></i>
+      <button id="btn-sound-toggle" title="跳表嗶聲開關" class="p-1 rounded-lg bg-zinc-800/80 text-amber-400 hover:text-amber-300 transition-colors">
+        <i data-lucide="volume-2" class="w-3.5 h-3.5" id="sound-icon"></i>
       </button>
+      <div class="text-zinc-400 font-mono text-[11px] pl-1" id="clock-display">00:00:00</div>
     </div>
   </header>
 
-  <!-- 實體橫向跳表機核心外框 -->
-  <main class="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center">
-    <div class="meter-case rounded-2xl p-3 sm:p-4 relative">
+  <!-- 實體橫向跳表機本體 (高度自適應滿版，絕不產生捲動軸) -->
+  <main class="w-full flex-1 flex flex-col justify-center min-h-0 py-0.5">
+    <div class="meter-case rounded-xl p-2 sm:p-2.5 flex flex-col justify-between h-full min-h-0">
       
-      <!-- 經典頂部營業指示燈列 -->
-      <div class="flex justify-between items-center bg-zinc-950 px-4 py-2 rounded-xl mb-3 border border-zinc-800/90 text-xs">
-        <div class="flex items-center gap-4">
+      <!-- 經典指示燈列 -->
+      <div class="flex justify-between items-center bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800/90 text-[11px] flex-shrink-0">
+        <div class="flex items-center gap-3">
           <!-- 空車燈 -->
-          <div class="flex items-center gap-2">
-            <span id="lamp-empty" class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
-            <span class="font-bold text-emerald-400 tracking-wider" id="lamp-empty-txt">空車 VACANT</span>
+          <div class="flex items-center gap-1.5">
+            <span id="lamp-empty" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
+            <span class="font-bold text-emerald-400 tracking-wider text-[11px]" id="lamp-empty-txt">空車 VACANT</span>
           </div>
           <!-- 營業燈 -->
-          <div class="flex items-center gap-2">
-            <span id="lamp-hired" class="w-3 h-3 rounded-full bg-zinc-700"></span>
-            <span class="font-bold text-zinc-600 tracking-wider" id="lamp-hired-txt">營業 HIRED</span>
+          <div class="flex items-center gap-1.5">
+            <span id="lamp-hired" class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+            <span class="font-bold text-zinc-600 tracking-wider text-[11px]" id="lamp-hired-txt">營業 HIRED</span>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
-          <span id="lamp-stopped" class="hidden text-[11px] font-bold px-2 py-0.5 rounded bg-red-950 text-red-500 border border-red-900 animate-pulse">
+          <span id="lamp-stopped" class="hidden text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-950 text-red-500 border border-red-900 animate-pulse">
             停止計費鎖定
           </span>
-          <span id="lamp-tracking" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-zinc-900 text-zinc-600 border border-zinc-800 flex items-center gap-1">
-            <i data-lucide="map-pin" class="w-3 h-3"></i>
-            <span id="tracking-txt">軌跡未啟動</span>
+          <span id="lamp-tracking" class="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800 flex items-center gap-1">
+            <i data-lucide="map-pin" class="w-2.5 h-2.5"></i>
+            <span id="tracking-txt">GPS待命</span>
           </span>
-          <span class="text-zinc-400 font-mono pl-2" id="clock-display">00:00:00</span>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+      <!-- 中間核心數值顯示區 (Flex 自動均勻填滿) -->
+      <div class="grid grid-cols-12 gap-2 my-1.5 flex-1 min-h-0 items-stretch">
+        
         <!-- 左側：超大跳表金額主機 -->
-        <div class="md:col-span-7 led-panel rounded-xl p-4 sm:p-5 border border-zinc-800 relative flex flex-col justify-between overflow-hidden">
-          <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none"></div>
+        <div class="col-span-7 led-panel rounded-lg p-2 sm:p-3 border border-zinc-800 relative flex flex-col justify-between overflow-hidden">
+          <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none"></div>
 
-          <div class="flex justify-between items-start mb-1 relative z-10 border-b border-zinc-800/80 pb-2">
-            <span class="text-xs font-bold uppercase tracking-widest text-red-500/80">車資 FARE (TWD)</span>
+          <div class="flex justify-between items-center relative z-10 border-b border-zinc-800/80 pb-1">
+            <span class="text-[10px] font-bold tracking-widest text-red-500/80 uppercase">車資 FARE (TWD)</span>
             
-            <!-- 【清晰標示當前費率】點擊可手動設定 -->
-            <button id="btn-open-settings" class="flex flex-col items-end hover:opacity-80 transition-opacity">
-              <div class="flex items-center gap-1.5 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30">
-                <i data-lucide="map" class="w-3.5 h-3.5 text-amber-500"></i>
-                <span class="text-[11px] font-bold font-mono text-amber-400" id="current-region-display">北北基</span>
-              </div>
+            <button id="btn-open-settings" class="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 hover:opacity-80 transition-opacity">
+              <i data-lucide="map" class="w-3 h-3 text-amber-500"></i>
+              <span class="text-[10px] font-bold font-mono text-amber-400" id="current-region-display">北北基</span>
             </button>
           </div>
 
           <!-- 金額大字體 -->
-          <div class="flex justify-end items-baseline font-meter my-2 relative z-10">
-            <span class="text-2xl sm:text-3xl font-bold text-red-500/70 mr-2">NT$</span>
-            <span class="text-6xl sm:text-7xl lg:text-8xl font-bold text-red-500 glow-red tracking-tight transition-all duration-200" id="display-fare">85</span>
+          <div class="flex justify-end items-baseline font-meter my-auto relative z-10">
+            <span class="text-xl sm:text-2xl font-bold text-red-500/70 mr-1.5">NT$</span>
+            <span class="text-5xl sm:text-6xl lg:text-7xl font-bold text-red-500 glow-red tracking-tight" id="display-fare">85</span>
           </div>
 
-          <!-- 【優化】跳表進度條：清楚標示距離下次加5元的條件 -->
-          <div class="pt-2 relative z-10">
-            <div class="flex justify-between text-[11px] text-zinc-400 mb-1">
-              <span>距下次跳表 (+$5) 條件</span>
-              <span id="jump-progress-label" class="font-mono text-amber-400 font-bold">里程 1250m 或 停等 60s</span>
+          <!-- 跳表進度條 -->
+          <div class="relative z-10 pt-0.5">
+            <div class="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+              <span>距下次跳表 (+5)</span>
+              <span id="jump-progress-label" class="font-mono text-amber-400 font-bold">1250m 或 60s</span>
             </div>
-            <div class="w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-800 relative">
+            <div class="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden border border-zinc-800">
               <div id="jump-progress-bar" class="bg-red-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
           </div>
         </div>
 
-        <!-- 右側：行車儀表 -->
-        <div class="md:col-span-5 grid grid-cols-2 gap-2">
-          <div class="led-panel p-3 rounded-xl border border-zinc-800 flex flex-col justify-between">
-            <div class="text-[11px] text-zinc-400 font-medium flex items-center justify-between">
+        <!-- 右側：行車儀表 (四格整合) -->
+        <div class="col-span-5 grid grid-cols-2 gap-1.5 items-stretch">
+          
+          <div class="led-panel p-1.5 rounded-lg border border-zinc-800 flex flex-col justify-between">
+            <div class="text-[10px] text-zinc-400 flex items-center justify-between">
               <span>總里程</span>
-              <i data-lucide="navigation" class="w-3.5 h-3.5 text-amber-400"></i>
+              <i data-lucide="navigation" class="w-3 h-3 text-amber-400"></i>
             </div>
             <div class="text-right">
-              <div class="text-2xl sm:text-3xl font-bold font-meter text-amber-400 glow-amber" id="display-distance">0.00</div>
-              <div class="text-[10px] text-zinc-500 font-mono">km 公里</div>
+              <div class="text-xl sm:text-2xl font-bold font-meter text-amber-400 glow-amber leading-tight" id="display-distance">0.00</div>
+              <div class="text-[9px] text-zinc-500 font-mono">km 公里</div>
             </div>
           </div>
 
-          <div class="led-panel p-3 rounded-xl border border-zinc-800 flex flex-col justify-between">
-            <div class="text-[11px] text-zinc-400 font-medium flex items-center justify-between">
+          <div class="led-panel p-1.5 rounded-lg border border-zinc-800 flex flex-col justify-between">
+            <div class="text-[10px] text-zinc-400 flex items-center justify-between">
               <span>時速</span>
-              <i data-lucide="zap" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <i data-lucide="zap" class="w-3 h-3 text-emerald-400"></i>
             </div>
             <div class="text-right">
-              <div class="text-2xl sm:text-3xl font-bold font-meter text-emerald-400 glow-green" id="display-speed">0</div>
-              <div class="text-[10px] text-zinc-500 font-mono">km/h</div>
+              <div class="text-xl sm:text-2xl font-bold font-meter text-emerald-400 glow-green leading-tight" id="display-speed">0</div>
+              <div class="text-[9px] text-zinc-500 font-mono">km/h</div>
             </div>
           </div>
 
-          <div class="led-panel p-3 rounded-xl border border-zinc-800 flex flex-col justify-between">
-            <div class="text-[11px] text-zinc-400 font-medium flex items-center justify-between">
-              <span>延滯停等</span>
-              <i data-lucide="timer" class="w-3.5 h-3.5 text-amber-400"></i>
+          <div class="led-panel p-1.5 rounded-lg border border-zinc-800 flex flex-col justify-between">
+            <div class="text-[10px] text-zinc-400 flex items-center justify-between">
+              <span>低速停等</span>
+              <i data-lucide="timer" class="w-3 h-3 text-amber-400"></i>
             </div>
             <div class="text-right">
-              <div class="text-2xl sm:text-3xl font-bold font-meter text-amber-400 glow-amber" id="display-idle-time">00:00</div>
-              <div class="text-[10px] text-zinc-500 font-mono">累積時間</div>
+              <div class="text-xl sm:text-2xl font-bold font-meter text-amber-400 glow-amber leading-tight" id="display-idle-time">00:00</div>
+              <div class="text-[9px] text-zinc-500 font-mono">累計停等</div>
             </div>
           </div>
 
-          <div class="led-panel p-3 rounded-xl border border-zinc-800 flex flex-col justify-between">
-            <div class="text-[11px] text-zinc-400 font-medium flex items-center justify-between">
-              <span>衛星定位</span>
-              <i data-lucide="satellite" class="w-3.5 h-3.5 text-zinc-400" id="gps-icon"></i>
+          <div class="led-panel p-1.5 rounded-lg border border-zinc-800 flex flex-col justify-between">
+            <div class="text-[10px] text-zinc-400 flex items-center justify-between">
+              <span>GPS定位</span>
+              <i data-lucide="satellite" class="w-3 h-3 text-zinc-400"></i>
             </div>
             <div class="text-right">
-              <div class="text-base font-bold text-zinc-200 mt-1" id="gps-badge">待命</div>
-              <div class="text-[10px] text-zinc-500 font-mono truncate" id="gps-accuracy-text">尚未啟動</div>
+              <div class="text-xs sm:text-sm font-bold text-zinc-300" id="gps-badge">待命</div>
+              <div class="text-[9px] text-zinc-500 font-mono truncate" id="gps-accuracy-text">未啟動</div>
             </div>
           </div>
+
         </div>
       </div>
 
-      <!-- 橫向下排：實體按鈕鍵盤 (三段式流程 + 開關式加成) -->
-      <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3 mt-3 pt-2 border-t border-zinc-800">
+      <!-- 下排：操作按鈕鍵盤 (橫式單列，按鈕均勻分佈) -->
+      <div class="grid grid-cols-12 gap-1.5 pt-1 border-t border-zinc-800/90 flex-shrink-0">
         
         <!-- 步驟1: 計程計時 -->
-        <button id="btn-start-trip" class="sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-sm shadow-lg shadow-red-950 active:scale-[0.98] transition-all">
-          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
-          <span id="btn-start-text">計程計時</span>
+        <button id="btn-start-trip" class="col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-xs shadow-md shadow-red-950 active:scale-[0.98] transition-all">
+          <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+          <span>起表開始</span>
         </button>
 
         <!-- 步驟2: 停止計費 -->
-        <button id="btn-stop-trip" disabled class="sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-sm cursor-not-allowed transition-all">
-          <i data-lucide="square" class="w-4 h-4"></i>
+        <button id="btn-stop-trip" disabled class="col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed transition-all">
+          <i data-lucide="square" class="w-3.5 h-3.5"></i>
           <span>停止計費</span>
         </button>
 
         <!-- 步驟3: 列印收據 -->
-        <button id="btn-print-receipt" disabled class="sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-sm cursor-not-allowed transition-all relative overflow-hidden">
-          <i data-lucide="printer" class="w-4 h-4"></i>
+        <button id="btn-print-receipt" disabled class="col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed transition-all">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
           <span>列印收據</span>
         </button>
 
-        <!-- 附加費用切換鍵 (Toggle) -->
-        <div class="sm:col-span-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl p-1.5 flex items-center gap-1.5 text-xs">
-          <button id="btn-toggle-night" class="flex-1 py-2 px-1 text-center rounded-lg bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
-            夜間+$20
+        <!-- 附加費用切換 (夜間 & 國道) -->
+        <div class="col-span-3 bg-zinc-950/80 border border-zinc-800/80 rounded-lg p-0.5 flex items-center gap-1 text-[11px]">
+          <button id="btn-toggle-night" class="flex-1 py-1 px-0.5 text-center rounded bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
+            夜+$20
           </button>
-          <button id="btn-toggle-toll" class="flex-1 py-2 px-1 text-center rounded-lg bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
-            國道+$50
+          <button id="btn-toggle-toll" class="flex-1 py-1 px-0.5 text-center rounded bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
+            道+$50
           </button>
         </div>
 
       </div>
     </div>
-
-    <!-- 桌機模擬器控制台 -->
-    <div class="mt-3 bg-zinc-900/60 border border-zinc-800 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-      <div class="flex items-center gap-2">
-        <i data-lucide="gamepad-2" class="w-4 h-4 text-amber-400"></i>
-        <span class="text-zinc-300 font-semibold">無GPS模擬行駛：</span>
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="toggle-sim-mode" class="sr-only peer">
-          <div class="w-8 h-4 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
-        </label>
-      </div>
-
-      <div id="sim-controls" class="hidden flex items-center gap-2 w-full sm:w-auto">
-        <span class="text-zinc-400">時速: <span id="sim-speed-val" class="font-mono text-amber-400 font-bold">40</span> km/h</span>
-        <input type="range" id="sim-speed-slider" min="0" max="100" step="5" value="40" class="w-24 sm:w-32 accent-amber-500">
-        <button class="px-2 py-0.5 bg-zinc-800 rounded text-zinc-300" onclick="setSimSpeed(0)">停等</button>
-        <button class="px-2 py-0.5 bg-zinc-800 rounded text-zinc-300" onclick="setSimSpeed(45)">巡航</button>
-      </div>
-    </div>
   </main>
 
-  <!-- 彈窗列印動畫 -->
-  <div id="print-animation-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[45] flex items-start justify-center pt-10 hidden overflow-hidden pointer-events-none">
-    <div id="print-paper" class="w-64 bg-white shadow-2xl receipt-paper flex flex-col items-center border border-zinc-200" style="height: 350px;">
-      <div class="text-center pt-8 text-zinc-800/20 font-bold text-xl tracking-widest border-b-2 border-dashed border-zinc-300 pb-2 mx-4 w-full">TAIWAN TAXI</div>
-      <div class="mt-4 space-y-3 px-6 w-full">
+  <!-- 列印收據過場動畫 -->
+  <div id="print-animation-overlay" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-[70] flex items-start justify-center pt-8 hidden pointer-events-none">
+    <div id="print-paper" class="w-64 bg-white shadow-2xl receipt-paper flex flex-col items-center border border-zinc-200" style="height: 320px;">
+      <div class="text-center pt-6 text-zinc-800/30 font-bold text-lg tracking-widest border-b-2 border-dashed border-zinc-300 pb-2 mx-4 w-full">TAIWAN TAXI</div>
+      <div class="mt-3 space-y-2 px-6 w-full">
         <div class="w-full h-2 bg-zinc-200 rounded"></div>
         <div class="w-3/4 h-2 bg-zinc-200 rounded"></div>
         <div class="w-full h-2 bg-zinc-200 rounded"></div>
-        <div class="w-1/2 h-2 bg-zinc-200 rounded"></div>
-        <div class="w-full h-24 bg-zinc-200 rounded mt-4 flex items-center justify-center text-zinc-400 text-xs font-bold">
-          列印中...
+        <div class="w-full h-20 bg-zinc-200 rounded mt-3 flex items-center justify-center text-zinc-400 text-xs font-bold">
+          收據列印中...
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗：收據與地圖 -->
-  <div id="modal-receipt" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 hidden overflow-y-auto">
-    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xl my-auto">
+  <!-- 車資證明聯彈窗 (支援橫向自適應雙欄與捲動) -->
+  <div id="modal-receipt" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] flex items-center justify-center p-2 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-xl p-3 sm:p-4 space-y-3 shadow-2xl my-auto max-h-[95vh] flex flex-col">
       
-      <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-2 flex-shrink-0">
         <div class="flex items-center gap-2">
-          <div class="p-2 bg-yellow-500/10 text-yellow-400 rounded-lg">
-            <i data-lucide="receipt" class="w-5 h-5"></i>
+          <div class="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
           </div>
-          <h3 class="font-bold text-lg text-white">車資證明聯</h3>
+          <h3 class="font-bold text-sm sm:text-base text-white">乘車證明單 (電子收據)</h3>
         </div>
-        <button id="btn-export-image" class="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 text-[11px] bg-emerald-900/30 px-2 py-1.5 rounded transition font-medium">
+        <button id="btn-export-image" class="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 text-[11px] bg-emerald-950/40 border border-emerald-800/50 px-2 py-1 rounded transition font-medium">
           <i data-lucide="image" class="w-3.5 h-3.5"></i> 存成照片
         </button>
       </div>
 
-      <!-- 收據本體 (供截圖區域) -->
-      <div id="receipt-export-area" class="receipt-paper p-5 my-2 mx-1 shadow-lg flex flex-col justify-between h-auto rounded-sm border border-zinc-200 bg-white">
-        <div class="text-center font-bold text-base border-b-2 border-dashed border-slate-300 pb-2 mb-3 text-slate-800">
-          電子乘車證明單<br>
-          <span class="text-xs text-slate-500 font-mono font-normal" id="receipt-print-time"></span>
+      <!-- 收據本體 (供截圖區域，橫向時為左右雙欄配置以節省垂直空間) -->
+      <div id="receipt-export-area" class="receipt-paper p-3 sm:p-4 shadow-lg rounded border border-zinc-300 bg-white flex-1 overflow-y-auto">
+        <div class="text-center font-bold text-sm sm:text-base border-b-2 border-dashed border-slate-300 pb-1 mb-2 text-slate-800">
+          台灣計程車電子乘車證明單<br>
+          <span class="text-[11px] text-slate-500 font-mono font-normal" id="receipt-print-time"></span>
         </div>
         
-        <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-mono">
-          <div class="flex justify-between"><span>行駛總里程：</span><span class="font-bold text-slate-900" id="rcpt-distance">0.00 km</span></div>
-          <div class="flex justify-between"><span>行車總時間：</span><span class="font-bold text-slate-900" id="rcpt-duration">00:00</span></div>
-          <div class="flex justify-between"><span>低速停等累計：</span><span class="font-bold text-slate-900" id="rcpt-idle">00:00</span></div>
-          <div class="flex justify-between pt-2"><span>基本跳表車資：</span><span class="font-bold text-slate-900" id="rcpt-base-fare">NT$ 85</span></div>
-          <div id="rcpt-surcharge-list" class="space-y-1 pl-2 border-l-2 border-slate-300 ml-1 text-slate-600 text-[11px] sm:text-xs"></div>
-        </div>
-
-        <div class="border-t-2 border-dashed border-slate-300 pt-3 mt-4 flex justify-between items-baseline">
-          <span class="font-bold text-slate-800 text-sm">應付總額：</span>
-          <span class="font-bold text-3xl text-slate-900 tracking-tight">NT$ <span id="rcpt-total-fare">85</span></span>
-        </div>
-
-        <div class="mt-4 border-t-2 border-dashed border-slate-300 pt-3">
-          <div class="text-center text-[11px] font-bold text-slate-500 mb-2 tracking-widest flex items-center justify-center gap-1">
-            <i data-lucide="map-pin" class="w-3 h-3"></i> 行駛軌跡圖
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700 font-mono">
+          <!-- 明細 -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between"><span>行駛總里程：</span><span class="font-bold text-slate-900" id="rcpt-distance">0.00 km</span></div>
+            <div class="flex justify-between"><span>行車總時間：</span><span class="font-bold text-slate-900" id="rcpt-duration">00:00</span></div>
+            <div class="flex justify-between"><span>低速停等累計：</span><span class="font-bold text-slate-900" id="rcpt-idle">00:00</span></div>
+            <div class="flex justify-between pt-1"><span>基本跳表車資：</span><span class="font-bold text-slate-900" id="rcpt-base-fare">NT$ 85</span></div>
+            <div id="rcpt-surcharge-list" class="space-y-0.5 pl-2 border-l-2 border-slate-300 ml-1 text-slate-600 text-[11px]"></div>
+            
+            <div class="border-t-2 border-dashed border-slate-300 pt-2 mt-2 flex justify-between items-baseline">
+              <span class="font-bold text-slate-800 text-xs">應付總額：</span>
+              <span class="font-bold text-2xl text-slate-900 tracking-tight">NT$ <span id="rcpt-total-fare">85</span></span>
+            </div>
           </div>
-          <div id="receipt-map-wrapper" class="receipt-map-wrapper rounded border border-slate-300 overflow-hidden shadow-inner p-1 bg-white flex justify-center">
-             <!-- Canvas 將由 JS 生成 -->
+
+          <!-- 地圖 -->
+          <div class="flex flex-col justify-between">
+            <div class="text-center text-[10px] font-bold text-slate-500 mb-1 tracking-widest flex items-center justify-center gap-1">
+              <i data-lucide="map-pin" class="w-3 h-3"></i> 行駛軌跡地圖
+            </div>
+            <div id="receipt-map-wrapper" class="receipt-map-wrapper rounded border border-slate-300 overflow-hidden shadow-inner p-1 bg-white flex justify-center items-center h-32 sm:h-full">
+              <!-- Canvas 將由 JS 繪製 -->
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="pt-2">
-        <button id="btn-close-receipt" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-zinc-950 font-bold rounded-xl transition text-sm">
+      <div class="pt-1 flex-shrink-0">
+        <button id="btn-close-receipt" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 font-bold rounded-lg transition text-xs">
           完成交易 / 回復空車
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 費率設定 Modal -->
-  <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-2xl p-5 space-y-4 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
-        <h3 class="font-bold text-lg text-white">費率設定 (可手動或GPS自動偵測)</h3>
-        <button id="btn-close-settings" class="p-1 text-zinc-400 hover:text-white rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <!-- 費率選擇 Modal -->
+  <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-3 hidden">
+    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-sm rounded-xl p-4 space-y-3 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-2">
+        <h3 class="font-bold text-sm text-white">費率設定 (手動 / GPS偵測)</h3>
+        <button id="btn-close-settings" class="p-1 text-zinc-400 hover:text-white rounded"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="grid grid-cols-3 gap-2">
-        <button onclick="applyPreset('taipei', true)" class="p-2 text-xs rounded-xl bg-zinc-800 border border-zinc-700 text-left hover:bg-zinc-700">
+        <button onclick="applyPreset('taipei', true)" class="p-2 text-xs rounded-lg bg-zinc-800 border border-zinc-700 text-center hover:bg-zinc-700">
           <div class="font-bold text-amber-400">北北基新制</div>
         </button>
-        <button onclick="applyPreset('taichung', true)" class="p-2 text-xs rounded-xl bg-zinc-800 border border-zinc-700 text-left hover:bg-zinc-700">
+        <button onclick="applyPreset('taichung', true)" class="p-2 text-xs rounded-lg bg-zinc-800 border border-zinc-700 text-center hover:bg-zinc-700">
           <div class="font-bold text-amber-400">中彰投</div>
         </button>
-        <button onclick="applyPreset('kaohsiung', true)" class="p-2 text-xs rounded-xl bg-zinc-800 border border-zinc-700 text-left hover:bg-zinc-700">
+        <button onclick="applyPreset('kaohsiung', true)" class="p-2 text-xs rounded-lg bg-zinc-800 border border-zinc-700 text-center hover:bg-zinc-700">
           <div class="font-bold text-amber-400">高屏地區</div>
         </button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="fixed top-4 sm:top-auto sm:bottom-4 left-1/2 -translate-x-1/2 bg-zinc-800/95 backdrop-blur border border-zinc-700 text-zinc-200 px-4 py-2 rounded-full text-xs font-medium shadow-[0_4px_20px_rgba(0,0,0,0.5)] pointer-events-none opacity-0 transition-opacity duration-300 z-[60] flex items-center gap-1.5 whitespace-nowrap">
-    <i data-lucide="info" class="w-4 h-4 text-yellow-400"></i>
+  <!-- 浮動提示 Toast -->
+  <div id="toast" class="fixed bottom-3 left-1/2 -translate-x-1/2 bg-zinc-800/95 backdrop-blur border border-zinc-700 text-zinc-200 px-3 py-1.5 rounded-full text-xs font-medium shadow-lg pointer-events-none opacity-0 transition-opacity duration-300 z-[95] flex items-center gap-1.5 whitespace-nowrap">
+    <i data-lucide="info" class="w-3.5 h-3.5 text-amber-400"></i>
     <span id="toast-text"></span>
   </div>
 
@@ -394,7 +411,7 @@
       playTripStop() { if(!this.enabled) return; this.initContext(); this.beep(600, this.ctx.currentTime, 0.1, 'square'); this.beep(400, this.ctx.currentTime + 0.15, 0.15, 'square'); }
       playPrinterSound() {
         if(!this.enabled) return; this.initContext();
-        for(let i=0; i<15; i++) { this.beep(150 + Math.random()*50, this.ctx.currentTime + (i*0.15), 0.1, 'sawtooth'); }
+        for(let i=0; i<15; i++) { this.beep(150 + Math.random()*50, this.ctx.currentTime + (i*0.14), 0.09, 'sawtooth'); }
       }
       beep(freq, startTime, duration, type = 'sine') {
         try {
@@ -407,7 +424,7 @@
     }
     const audioEngine = new MeterAudioEngine();
 
-    // 2. Config & State
+    // 2. 費率設定與狀態變數
     const PRESETS = {
       taipei: { name: '北北基', baseFare: 85, baseDist: 1250, stepFare: 5, stepDist: 200, idleSeconds: 60, idleSpeed: 5, nightSurcharge: 20 },
       taichung: { name: '中彰投', baseFare: 85, baseDist: 1250, stepFare: 5, stepDist: 200, idleSeconds: 60, idleSpeed: 5, nightSurcharge: 20 },
@@ -415,7 +432,7 @@
     };
     let currentConfig = { ...PRESETS.taipei };
 
-    // State Machine: VACANT -> HIRED -> STOPPED
+    // 狀態機：VACANT -> HIRED -> STOPPED
     let tripStatus = 'VACANT'; 
     let baseCalculatedFare = 85; 
     let totalFare = 85;          
@@ -430,13 +447,12 @@
     let lastPosition = null;
     let currentSpeedKmh = 0;
     
-    // Tracking & Map
+    // 真實 GPS 軌跡
     let routeCoordinates = [];
-    let isSimMode = false, simSpeedKmh = 40, simLat = 25.0478, simLng = 121.5170;
     let wakeLock = null;
     let latestGpsPosition = null;
 
-    // 3. GPS & Math
+    // 3. GPS 距離計算與區域自動偵測
     function calcDist(lat1, lon1, lat2, lon2) {
       const R = 6371000;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -446,7 +462,7 @@
     }
 
     function checkAutoRegionSwitch(lat, lng) {
-      if (tripStatus !== 'VACANT' || isSimMode) return; // 營業中或模擬模式不自動切換
+      if (tripStatus !== 'VACANT') return;
       let targetKey = null;
       if (lat >= 24.8) targetKey = 'taipei';
       else if (lat < 24.8 && lat >= 23.5) targetKey = 'taichung';
@@ -454,24 +470,21 @@
 
       if (targetKey && currentConfig.name !== PRESETS[targetKey].name) {
         applyPreset(targetKey, false);
-        showToast(`📍 偵測到跨區，自動切換為【${PRESETS[targetKey].name}】費率`);
+        showToast(`📍 跨區切換【${PRESETS[targetKey].name}】費率`);
       }
     }
 
     function handleGpsSuccess(pos) {
       const { latitude, longitude, speed, accuracy } = pos.coords;
-      
       latestGpsPosition = { lat: latitude, lng: longitude };
 
       document.getElementById('gps-accuracy-text').textContent = `誤差 ±${Math.round(accuracy)}m`;
       const badge = document.getElementById('gps-badge');
-      if (accuracy <= 15) { badge.textContent = "訊號極佳"; badge.className = "text-base font-bold text-emerald-400"; } 
-      else if (accuracy <= 35) { badge.textContent = "定位正常"; badge.className = "text-base font-bold text-amber-400"; } 
-      else { badge.textContent = "訊號偏弱"; badge.className = "text-base font-bold text-red-400"; }
+      if (accuracy <= 15) { badge.textContent = "訊號極佳"; badge.className = "text-xs sm:text-sm font-bold text-emerald-400"; } 
+      else if (accuracy <= 35) { badge.textContent = "定位良好"; badge.className = "text-xs sm:text-sm font-bold text-amber-400"; } 
+      else { badge.textContent = "訊號偏弱"; badge.className = "text-xs sm:text-sm font-bold text-red-400"; }
 
       checkAutoRegionSwitch(latitude, longitude);
-
-      if (isSimMode) return;
 
       if (tripStatus === 'HIRED') {
         const now = Date.now();
@@ -480,11 +493,11 @@
           const deltaTimeSec = (now - lastPosition.time) / 1000;
           const calcSpd = deltaTimeSec > 0 ? (deltaDist / deltaTimeSec) * 3.6 : 0;
           
-          // 抗飄移：位移>2.5m 且速度合理
-          if (deltaDist >= 2.5 && calcSpd < 160) {
+          // 抗 GPS 飄移保護
+          if (deltaDist >= 2.5 && calcSpd < 150) {
             totalDistanceMeters += deltaDist;
             routeCoordinates.push({ lat: latitude, lng: longitude });
-            document.getElementById('tracking-txt').textContent = `記錄中 (${routeCoordinates.length}點)`;
+            document.getElementById('tracking-txt').textContent = `記錄中 (${routeCoordinates.length})`;
           }
           currentSpeedKmh = (speed !== null && speed >= 0) ? Math.round(speed * 3.6) : Math.round(calcSpd);
         } else {
@@ -498,19 +511,20 @@
     function startGpsTracking() {
       if ('geolocation' in navigator) {
         navigator.geolocation.watchPosition(handleGpsSuccess, 
-          () => { document.getElementById('gps-accuracy-text').textContent = "無衛星訊號"; document.getElementById('gps-badge').className="text-zinc-500"; }, 
+          () => { 
+            document.getElementById('gps-accuracy-text').textContent = "未獲取訊號"; 
+            document.getElementById('gps-badge').className = "text-zinc-500"; 
+          }, 
           { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
         );
       }
     }
 
-    // 4. Fare Logic & UI Sync
+    // 4. 車資演算與介面刷新
     function evaluateFare() {
-      if (tripStatus !== 'HIRED') return; // 只有在 HIRED 狀態才算距離和時間 (STOPPED 凍結)
+      if (tripStatus !== 'HIRED') return;
 
-      // 法規計費邏輯：距離與時間分開觸發
       let newBaseFare = currentConfig.baseFare;
-      
       if (totalDistanceMeters > currentConfig.baseDist) {
         newBaseFare += Math.floor((totalDistanceMeters - currentConfig.baseDist) / currentConfig.stepDist) * currentConfig.stepFare + currentConfig.stepFare;
       }
@@ -526,15 +540,6 @@
 
     function onHeartbeat() {
       if (tripStatus === 'HIRED') {
-        if (isSimMode) {
-          currentSpeedKmh = simSpeedKmh;
-          totalDistanceMeters += (simSpeedKmh / 3.6); // 1秒移動距離
-          if (simSpeedKmh > 0) {
-            simLat += (0.00005 * (simSpeedKmh / 40));
-            simLng += (0.00004 * (simSpeedKmh / 40));
-            routeCoordinates.push({ lat: simLat, lng: simLng });
-          }
-        }
         if (currentSpeedKmh <= currentConfig.idleSpeed) {
           accumulatedIdleSeconds += 1;
         }
@@ -552,7 +557,6 @@
       const secs = (accumulatedIdleSeconds % 60).toString().padStart(2, '0');
       document.getElementById('display-idle-time').textContent = `${mins}:${secs}`;
 
-      // 【精準修改】進度條邏輯：顯示距離下次 +5 元的最快條件 (時間 or 里程)
       let distRemaining = currentConfig.baseDist - totalDistanceMeters;
       let isBase = true;
       if (totalDistanceMeters > currentConfig.baseDist) {
@@ -561,34 +565,27 @@
       }
       let idleRemaining = currentConfig.idleSeconds - (accumulatedIdleSeconds % currentConfig.idleSeconds);
       
-      // 計算 % 數用於繪製條狀圖
       let distProgRaw = isBase ? (totalDistanceMeters / currentConfig.baseDist) : (((totalDistanceMeters - currentConfig.baseDist) % currentConfig.stepDist) / currentConfig.stepDist);
       let idleProgRaw = (accumulatedIdleSeconds % currentConfig.idleSeconds) / currentConfig.idleSeconds;
-      
       let progress = Math.min(100, Math.round(Math.max(distProgRaw, idleProgRaw) * 100));
       
-      // 更新 UI 提示文字，讓司機/乘客一眼看懂
       document.getElementById('jump-progress-bar').style.width = `${progress}%`;
       if (tripStatus === 'HIRED') {
-        document.getElementById('jump-progress-label').textContent = `里程差 ${Math.round(distRemaining)}m 或 停等差 ${Math.round(idleRemaining)}s`;
+        document.getElementById('jump-progress-label').textContent = `${Math.round(distRemaining)}m 或 ${Math.round(idleRemaining)}s`;
       } else {
-        document.getElementById('jump-progress-label').textContent = `系統待命中`;
+        document.getElementById('jump-progress-label').textContent = `待命中`;
       }
     }
 
-    // 5. Button Actions (Strict 3-step Process)
-    
-    // 步驟 1: 計程計時
+    // 5. 按鈕流程：起表 -> 停止計費 -> 列印收據
     function actionStartTrip() {
       tripStatus = 'HIRED';
       tripStartTime = Date.now();
       totalDistanceMeters = 0;
       accumulatedIdleSeconds = 0;
-      
       routeCoordinates = [];
-      if (isSimMode) {
-        routeCoordinates.push({ lat: simLat, lng: simLng });
-      } else if (latestGpsPosition) {
+
+      if (latestGpsPosition) {
         routeCoordinates.push({ lat: latestGpsPosition.lat, lng: latestGpsPosition.lng });
         lastPosition = { lat: latestGpsPosition.lat, lon: latestGpsPosition.lng, time: Date.now() };
       } else {
@@ -598,72 +595,63 @@
       baseCalculatedFare = currentConfig.baseFare;
       totalFare = baseCalculatedFare + extraCharges;
 
-      // 燈號
-      document.getElementById('lamp-empty').className = "w-3 h-3 rounded-full bg-zinc-700";
-      document.getElementById('lamp-empty-txt').className = "font-bold text-zinc-600 tracking-wider";
-      document.getElementById('lamp-hired').className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]";
-      document.getElementById('lamp-hired-txt').className = "font-bold text-red-500 tracking-wider";
+      document.getElementById('lamp-empty').className = "w-2.5 h-2.5 rounded-full bg-zinc-700";
+      document.getElementById('lamp-empty-txt').className = "font-bold text-zinc-600 tracking-wider text-[11px]";
+      document.getElementById('lamp-hired').className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]";
+      document.getElementById('lamp-hired-txt').className = "font-bold text-red-500 tracking-wider text-[11px]";
       document.getElementById('lamp-stopped').classList.add('hidden');
-      document.getElementById('tracking-txt').textContent = "軌跡記錄中";
+      document.getElementById('tracking-txt').textContent = "記錄中";
 
-      // 按鈕
       const btnStart = document.getElementById('btn-start-trip');
-      btnStart.disabled = true; btnStart.classList.replace('bg-gradient-to-r', 'bg-zinc-800');
-      btnStart.className = "sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-sm cursor-not-allowed";
+      btnStart.disabled = true;
+      btnStart.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed";
       
       const btnStop = document.getElementById('btn-stop-trip');
       btnStop.disabled = false;
-      btnStop.className = "sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-amber-950 font-bold text-sm shadow-lg shadow-amber-900/50 active:scale-[0.98] transition-all";
+      btnStop.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-amber-950 font-bold text-xs shadow-md shadow-amber-950/50 active:scale-[0.98] transition-all";
 
       document.getElementById('btn-print-receipt').disabled = true;
 
       audioEngine.playTripStart();
       updateDisplay();
       requestWakeLock();
-      showToast("🚕 起表！已開始精確計程");
+      showToast("🚕 起表開始計費");
     }
 
-    // 步驟 2: 停止計費 (凍結鎖死)
     function actionStopTrip() {
       if (tripStatus !== 'HIRED') return;
-      tripStatus = 'STOPPED'; // 這會停止 onHeartbeat 內的累計
+      tripStatus = 'STOPPED';
       tripEndTime = Date.now();
       
       audioEngine.playTripStop();
       document.getElementById('lamp-stopped').classList.remove('hidden');
 
-      // 按鈕切換
       const btnStop = document.getElementById('btn-stop-trip');
       btnStop.disabled = true;
-      btnStop.className = "sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-sm cursor-not-allowed";
+      btnStop.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed";
 
       const btnPrint = document.getElementById('btn-print-receipt');
       btnPrint.disabled = false;
-      btnPrint.className = "sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-emerald-950 font-bold text-sm shadow-lg shadow-emerald-900/50 active:scale-[0.98] transition-all";
+      btnPrint.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-emerald-950 font-bold text-xs shadow-md shadow-emerald-950/50 active:scale-[0.98] transition-all";
 
       updateDisplay();
-      showToast("🛑 已停表，時間與里程不再跳動");
+      showToast("🛑 已停止計費");
     }
 
-    // 步驟 3: 列印收據
     function actionPrintReceipt() {
       if (tripStatus !== 'STOPPED') return;
-      
       audioEngine.playPrinterSound();
       
       const overlay = document.getElementById('print-animation-overlay');
       const paper = document.getElementById('print-paper');
       overlay.classList.remove('hidden');
-      
-      // 動畫
-      setTimeout(() => { paper.classList.add('print-animate'); }, 50);
+      setTimeout(() => { paper.classList.add('print-animate'); }, 40);
 
-      // 2.5 秒後開啟真正收據
       setTimeout(() => {
         overlay.classList.add('hidden');
         paper.classList.remove('print-animate');
         showReceiptModal();
-      }, 2500);
+      }, 2200);
     }
 
     function showReceiptModal() {
@@ -683,105 +671,96 @@
       let extrasHtml = '';
       if (isNightActive) extrasHtml += `<div class="flex justify-between"><span>夜間加成：</span><span>+ NT$ ${currentConfig.nightSurcharge}</span></div>`;
       if (isTollActive) extrasHtml += `<div class="flex justify-between"><span>國道通行：</span><span>+ NT$ 50</span></div>`;
-      if (extrasHtml === '') extrasHtml = `<div class="flex justify-between text-slate-400"><span>無附加費</span><span>NT$ 0</span></div>`;
+      if (extrasHtml === '') extrasHtml = `<div class="flex justify-between text-slate-400"><span>附加費用：</span><span>NT$ 0</span></div>`;
       document.getElementById('rcpt-surcharge-list').innerHTML = extrasHtml;
 
       document.getElementById('modal-receipt').classList.remove('hidden');
-      setTimeout(renderReceiptMapCanvas, 300);
+      setTimeout(renderReceiptMapCanvas, 200);
     }
 
     function resetToVacantState() {
       document.getElementById('modal-receipt').classList.add('hidden');
       tripStatus = 'VACANT';
-      totalDistanceMeters = 0; accumulatedIdleSeconds = 0; routeCoordinates = [];
+      totalDistanceMeters = 0; 
+      accumulatedIdleSeconds = 0; 
+      routeCoordinates = [];
       baseCalculatedFare = currentConfig.baseFare;
-      totalFare = baseCalculatedFare + extraCharges; // 維持司機的加成設定 (或可選擇清空)
+      totalFare = baseCalculatedFare + extraCharges;
       
-      // 恢復 UI 燈號與按鈕
-      document.getElementById('lamp-empty').className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]";
-      document.getElementById('lamp-empty-txt').className = "font-bold text-emerald-400 tracking-wider";
-      document.getElementById('lamp-hired').className = "w-3 h-3 rounded-full bg-zinc-700";
-      document.getElementById('lamp-hired-txt').className = "font-bold text-zinc-600 tracking-wider";
+      document.getElementById('lamp-empty').className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]";
+      document.getElementById('lamp-empty-txt').className = "font-bold text-emerald-400 tracking-wider text-[11px]";
+      document.getElementById('lamp-hired').className = "w-2.5 h-2.5 rounded-full bg-zinc-700";
+      document.getElementById('lamp-hired-txt').className = "font-bold text-zinc-600 tracking-wider text-[11px]";
       document.getElementById('lamp-stopped').classList.add('hidden');
-      document.getElementById('tracking-txt').textContent = "軌跡未啟動";
+      document.getElementById('tracking-txt').textContent = "GPS待命";
 
       const btnStart = document.getElementById('btn-start-trip');
       btnStart.disabled = false;
-      btnStart.className = "sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white font-bold text-sm shadow-lg shadow-red-950 active:scale-[0.98] transition-all";
+      btnStart.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-bold text-xs shadow-md shadow-red-950 active:scale-[0.98] transition-all";
       
-      document.getElementById('btn-print-receipt').className = "sm:col-span-3 flex items-center justify-center gap-1.5 py-3.5 px-2 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-sm cursor-not-allowed";
-      document.getElementById('btn-print-receipt').disabled = true;
+      const btnPrint = document.getElementById('btn-print-receipt');
+      btnPrint.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed";
+      btnPrint.disabled = true;
 
       updateDisplay();
     }
 
-    // Toggle 附加費用開關 (修正版)
     function toggleNightSurcharge() {
       isNightActive = !isNightActive;
-      extraCharges += isNightActive ? currentConfig.nightSurcharge : -currentConfig.nightSurcharge;
-      totalFare += isNightActive ? currentConfig.nightSurcharge : -currentConfig.nightSurcharge;
+      const delta = isNightActive ? currentConfig.nightSurcharge : -currentConfig.nightSurcharge;
+      extraCharges += delta;
+      totalFare += delta;
       
       const btn = document.getElementById('btn-toggle-night');
       if (isNightActive) {
-        btn.classList.add('bg-amber-500/20', 'text-amber-400', 'border-amber-500/50', 'shadow-[0_0_15px_rgba(245,158,11,0.2)]');
+        btn.classList.add('bg-amber-500/20', 'text-amber-400', 'border-amber-500/50');
         btn.classList.remove('bg-zinc-800', 'text-zinc-400', 'border-transparent');
-        showToast("已加入夜間加成");
+        showToast("已加夜間加成");
       } else {
-        btn.classList.remove('bg-amber-500/20', 'text-amber-400', 'border-amber-500/50', 'shadow-[0_0_15px_rgba(245,158,11,0.2)]');
+        btn.classList.remove('bg-amber-500/20', 'text-amber-400', 'border-amber-500/50');
         btn.classList.add('bg-zinc-800', 'text-zinc-400', 'border-transparent');
-        showToast("已扣除夜間加成");
+        showToast("已扣夜間加成");
       }
       updateDisplay();
     }
 
     function toggleTollSurcharge() {
       isTollActive = !isTollActive;
-      extraCharges += isTollActive ? 50 : -50;
-      totalFare += isTollActive ? 50 : -50;
+      const delta = isTollActive ? 50 : -50;
+      extraCharges += delta;
+      totalFare += delta;
       
       const btn = document.getElementById('btn-toggle-toll');
       if (isTollActive) {
-        btn.classList.add('bg-blue-500/20', 'text-blue-400', 'border-blue-500/50', 'shadow-[0_0_15px_rgba(59,130,246,0.2)]');
+        btn.classList.add('bg-blue-500/20', 'text-blue-400', 'border-blue-500/50');
         btn.classList.remove('bg-zinc-800', 'text-zinc-400', 'border-transparent');
-        showToast("已加入國道過路費");
+        showToast("已加國道費");
       } else {
-        btn.classList.remove('bg-blue-500/20', 'text-blue-400', 'border-blue-500/50', 'shadow-[0_0_15px_rgba(59,130,246,0.2)]');
+        btn.classList.remove('bg-blue-500/20', 'text-blue-400', 'border-blue-500/50');
         btn.classList.add('bg-zinc-800', 'text-zinc-400', 'border-transparent');
-        showToast("已扣除國道過路費");
+        showToast("已扣國道費");
       }
       updateDisplay();
     }
 
-    // 熱感應列印風格的 Canvas 地圖 (取代 Leaflet 解決截圖破圖問題)
-    function renderReceiptMapCanvas() {
+    // 6. 真實地圖圖磚與軌跡 Canvas 渲染 (支援 html2canvas 截圖)
+    async function renderReceiptMapCanvas() {
       const wrapper = document.getElementById('receipt-map-wrapper');
-      // 建立地圖畫布與載入中提示
-      wrapper.classList.add('relative');
-      wrapper.innerHTML = `
-        <div id="map-loading" class="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
-          <span class="text-xs text-slate-500 animate-pulse font-bold"><i data-lucide="loader" class="w-4 h-4 inline animate-spin mb-0.5 mr-1"></i>真實地圖載入中...</span>
-        </div>
-        <canvas id="canvas-route-map" width="360" height="180" class="w-full h-auto rounded relative z-0"></canvas>
-      `;
-      lucide.createIcons(); // 渲染 loading icon
-      
+      wrapper.innerHTML = '<canvas id="canvas-route-map" width="360" height="200" class="w-full h-auto rounded"></canvas>';
       const canvas = document.getElementById('canvas-route-map');
       const ctx = canvas.getContext('2d');
 
-      // 基礎底色
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       if (routeCoordinates.length === 0) {
-        document.getElementById('map-loading').style.display = 'none';
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '14px monospace';
+        ctx.font = '12px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('無行駛軌跡資料', canvas.width/2, canvas.height/2);
+        ctx.fillText('無 GPS 軌跡資料', canvas.width / 2, canvas.height / 2);
         return;
       }
 
-      // 1. 計算軌跡的經緯度範圍 (Bounding Box)
       let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
       routeCoordinates.forEach(pt => {
         if (pt.lat < minLat) minLat = pt.lat;
@@ -790,156 +769,139 @@
         if (pt.lng > maxLng) maxLng = pt.lng;
       });
 
-      // 避免單一點或無移動時的數學錯誤，給予最小範圍
-      if (maxLat - minLat < 0.001) { minLat -= 0.002; maxLat += 0.002; }
-      if (maxLng - minLng < 0.001) { minLng -= 0.002; maxLng += 0.002; }
-
-      // 2. 地圖投影數學公式 (Web Mercator)
-      function latRad(lat) {
-        const sin = Math.sin(lat * Math.PI / 180);
-        return Math.max(Math.min(Math.log((1 + sin) / (1 - sin)) / 2, Math.PI), -Math.PI) / 2;
-      }
-      function getZoom(mapPx, worldPx, fraction) {
-        return Math.floor(Math.log(mapPx / worldPx / fraction) / Math.LN2);
-      }
-      
-      const latFraction = (latRad(maxLat) - latRad(minLat)) / Math.PI;
-      const lngFraction = (maxLng - minLng) / 360;
-      
-      const latZoom = getZoom(canvas.height, 256, latFraction);
-      const lngZoom = getZoom(canvas.width, 256, lngFraction);
-      
-      // 計算最適合的縮放等級，並縮小一點讓軌跡不要貼邊
-      const targetZoom = Math.min(latZoom, lngZoom, 18);
-      const safeZoom = Math.max(12, Math.floor(targetZoom - 0.5)); 
-
       const centerLat = (minLat + maxLat) / 2;
       const centerLng = (minLng + maxLng) / 2;
 
-      // 經緯度轉圖面像素座標
-      function lonToPx(lon, z) { return (lon + 180) / 360 * 256 * Math.pow(2, z); }
-      function latToPx(lat, z) {
-        const sinLat = Math.sin(lat * Math.PI / 180);
-        return (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * 256 * Math.pow(2, z);
+      function lon2tile(lon, zoom) { return Math.floor((lon + 180) / 360 * Math.pow(2, zoom)); }
+      function lat2tile(lat, zoom) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)); }
+      function tile2lon(x, z) { return x / Math.pow(2, z) * 360 - 180; }
+      function tile2lat(y, z) {
+        const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+        return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
       }
 
-      // 計算中心點在世界地圖上的像素位置
-      const centerPx = lonToPx(centerLng, safeZoom);
-      const centerPy = latToPx(centerLat, safeZoom);
-      
-      // 換算 Canvas 左上角對應的世界像素位置
-      const startPx = centerPx - canvas.width / 2;
-      const startPy = centerPy - canvas.height / 2;
+      let zoom = 16;
+      const latDiff = Math.abs(maxLat - minLat);
+      const lngDiff = Math.abs(maxLng - minLng);
+      const maxDiff = Math.max(latDiff, lngDiff);
+      if (maxDiff > 0.1) zoom = 12;
+      else if (maxDiff > 0.05) zoom = 13;
+      else if (maxDiff > 0.02) zoom = 14;
+      else if (maxDiff > 0.008) zoom = 15;
 
-      // 計算需要抓取哪些地圖圖磚 (X, Y index)
-      const startTileX = Math.floor(startPx / 256);
-      const startTileY = Math.floor(startPy / 256);
-      const endTileX = Math.floor((startPx + canvas.width) / 256);
-      const endTileY = Math.floor((startPy + canvas.height) / 256);
+      const centerTileX = lon2tile(centerLng, zoom);
+      const centerTileY = lat2tile(centerLat, zoom);
 
-      // 3. 非同步並發下載地圖圖磚 (使用開源 CartoDB Light 風格，適合收據列印)
       const tilePromises = [];
-      for (let x = startTileX; x <= endTileX; x++) {
-        for (let y = startTileY; y <= endTileY; y++) {
-          tilePromises.push(new Promise(resolve => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous'; // 重要：允許跨域圖片畫入 Canvas 供日後截圖
-            img.onload = () => resolve({img, x, y});
-            img.onerror = () => resolve({img: null, x, y});
-            img.src = `https://a.basemaps.cartocdn.com/light_all/${safeZoom}/${x}/${y}.png`;
-          }));
+      const tilesToLoad = [];
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const tx = centerTileX + dx;
+          const ty = centerTileY + dy;
+          tilesToLoad.push({ tx, ty, dx, dy });
         }
       }
 
-      Promise.all(tilePromises).then(tiles => {
-        // 隱藏載入中動畫
-        const loader = document.getElementById('map-loading');
-        if(loader) loader.style.display = 'none';
-
-        // 4. 將地圖圖磚拼接到 Canvas 上
-        tiles.forEach(t => {
-          if (t.img) {
-            const drawX = t.x * 256 - startPx;
-            const drawY = t.y * 256 - startPy;
-            ctx.drawImage(t.img, drawX, drawY);
-          }
+      tilesToLoad.forEach(tile => {
+        const p = new Promise(resolve => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = `https://a.basemaps.cartocdn.com/light_all/${zoom}/${tile.tx}/${tile.ty}.png`;
+          img.onload = () => resolve({ img, ...tile, success: true });
+          img.onerror = () => resolve({ ...tile, success: false });
         });
-
-        // 加上一點點淡色遮罩，讓地圖有熱感應紙的褪色感
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 座標轉換輔助函式
-        function getCanvasX(lng) { return lonToPx(lng, safeZoom) - startPx; }
-        function getCanvasY(lat) { return latToPx(lat, safeZoom) - startPy; }
-
-        // 5. 繪製行駛軌跡線條
-        ctx.strokeStyle = '#0f172a'; // 深石板色
-        ctx.lineWidth = 4;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        
-        ctx.beginPath();
-        routeCoordinates.forEach((pt, i) => {
-          const x = getCanvasX(pt.lng);
-          const y = getCanvasY(pt.lat);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-
-        // 6. 標記起點與終點
-        const startPt = routeCoordinates[0];
-        const endPt = routeCoordinates[routeCoordinates.length - 1];
-
-        // 起點：綠色圓點
-        ctx.fillStyle = '#10b981';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); 
-        ctx.arc(getCanvasX(startPt.lng), getCanvasY(startPt.lat), 6, 0, Math.PI*2); 
-        ctx.fill(); ctx.stroke();
-
-        // 終點：紅色方塊
-        ctx.fillStyle = '#ef4444';
-        const endX = getCanvasX(endPt.lng);
-        const endY = getCanvasY(endPt.lat);
-        ctx.fillRect(endX - 5, endY - 5, 10, 10);
-        ctx.strokeRect(endX - 5, endY - 5, 10, 10);
+        tilePromises.push(p);
       });
+
+      const loadedTiles = await Promise.all(tilePromises);
+
+      const centerTileLon = tile2lon(centerTileX, zoom);
+      const centerTileLat = tile2lat(centerTileY, zoom);
+      const nextTileLon = tile2lon(centerTileX + 1, zoom);
+      const nextTileLat = tile2lat(centerTileY + 1, zoom);
+
+      const lonPerPixel = (nextTileLon - centerTileLon) / 256;
+      const latPerPixel = (centerTileLat - nextTileLat) / 256;
+
+      const originX = (canvas.width / 2) - ((centerLng - centerTileLon) / lonPerPixel);
+      const originY = (canvas.height / 2) - ((centerTileLat - centerLat) / latPerPixel);
+
+      loadedTiles.forEach(t => {
+        if (t.success) {
+          const x = originX + (t.dx * 256);
+          const y = originY + (t.dy * 256);
+          ctx.drawImage(t.img, x, y, 256, 256);
+        }
+      });
+
+      // 繪製軌跡
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'rgba(220, 38, 38, 0.4)';
+      ctx.shadowBlur = 4;
+
+      ctx.beginPath();
+      routeCoordinates.forEach((pt, i) => {
+        const px = originX + ((pt.lng - centerTileLon) / lonPerPixel);
+        const py = originY + ((centerTileLat - pt.lat) / latPerPixel);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // 起點 / 終點圖標
+      const startPt = routeCoordinates[0];
+      const endPt = routeCoordinates[routeCoordinates.length - 1];
+
+      const startPx = originX + ((startPt.lng - centerTileLon) / lonPerPixel);
+      const startPy = originY + ((centerTileLat - startPt.lat) / latPerPixel);
+      ctx.fillStyle = '#16a34a';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(startPx, startPy, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      const endPx = originX + ((endPt.lng - centerTileLon) / lonPerPixel);
+      const endPy = originY + ((centerTileLat - endPt.lat) / latPerPixel);
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(endPx, endPy, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
     }
 
-    // 完美解決 HTML2Canvas 報框截圖問題
+    // 完美匯出圖片
     function exportImage() {
       const node = document.getElementById('receipt-export-area');
       const btn = document.getElementById('btn-export-image');
       btn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> 處理中...';
-      showToast("正在產生照片，請稍候...");
+      showToast("正在產生照片...");
       
       html2canvas(node, { 
         scale: 2, 
         useCORS: true, 
         backgroundColor: '#f8fafc',
         onclone: function(clonedDoc) {
-          // 強制解除所有克隆節點的捲動條隱藏限制，保證擷取全身
           const clonedNode = clonedDoc.getElementById('receipt-export-area');
           clonedNode.style.maxHeight = 'none';
           clonedNode.style.overflow = 'visible';
-          let parent = clonedNode.parentElement;
-          while (parent && parent.tagName !== 'BODY') {
-            parent.style.maxHeight = 'none';
-            parent.style.overflow = 'visible';
-            parent = parent.parentElement;
-          }
         }
       }).then(canvas => {
         const url = canvas.toDataURL("image/png");
-        const a = document.createElement('a'); a.href = url; a.download = `Taxi-Receipt-${new Date().getTime()}.png`; a.click();
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = `Taxi-Receipt-${Date.now()}.png`; 
+        a.click();
         btn.innerHTML = '<i data-lucide="image" class="w-3.5 h-3.5"></i> 存成照片';
-        showToast("✅ 照片已下載成功！");
+        showToast("✅ 照片已儲存！");
       }).catch(err => {
         btn.innerHTML = '<i data-lucide="image" class="w-3.5 h-3.5"></i> 存成照片';
-        showToast("產生圖片失敗: " + err.message);
+        showToast("產生失敗: " + err.message);
       });
     }
 
@@ -953,14 +915,14 @@
         updateDisplay();
       }
       document.getElementById('modal-settings').classList.add('hidden');
-      if(manual) showToast(`已手動切換為【${currentConfig.name}】費率`);
+      if (manual) showToast(`切換【${currentConfig.name}】費率`);
     }
 
     function showToast(text) {
       const toast = document.getElementById('toast');
       document.getElementById('toast-text').textContent = text;
       toast.classList.remove('opacity-0'); toast.classList.add('opacity-100');
-      setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 3000);
+      setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 2500);
     }
 
     async function toggleWakeLock() {
@@ -980,7 +942,7 @@
           showToast("常亮設定失敗: " + err.message);
         }
       } else {
-        showToast("瀏覽器不支援常亮功能");
+        showToast("瀏覽器不支援螢幕常亮");
       }
     }
 
@@ -993,13 +955,7 @@
       }
     }
 
-    function setSimSpeed(spd) {
-      simSpeedKmh = parseInt(spd);
-      document.getElementById('sim-speed-slider').value = simSpeedKmh;
-      document.getElementById('sim-speed-val').textContent = simSpeedKmh;
-    }
-
-    // Init
+    // 初始化與監聽
     window.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       setInterval(onHeartbeat, 1000);
@@ -1011,7 +967,6 @@
       
       document.getElementById('btn-toggle-night').addEventListener('click', toggleNightSurcharge);
       document.getElementById('btn-toggle-toll').addEventListener('click', toggleTollSurcharge);
-
       document.getElementById('btn-wake-lock').addEventListener('click', toggleWakeLock);
 
       document.addEventListener('visibilitychange', async () => {
@@ -1027,18 +982,12 @@
         audioEngine.enabled = !audioEngine.enabled;
         audioEngine.initContext();
         document.getElementById('sound-icon').setAttribute('data-lucide', audioEngine.enabled ? 'volume-2' : 'volume-x');
-        lucide.createIcons(); showToast(audioEngine.enabled ? "音效開啓" : "音效靜音");
+        lucide.createIcons(); 
+        showToast(audioEngine.enabled ? "音效開啓" : "音效靜音");
       });
 
       document.getElementById('btn-open-settings').addEventListener('click', () => document.getElementById('modal-settings').classList.remove('hidden'));
       document.getElementById('btn-close-settings').addEventListener('click', () => document.getElementById('modal-settings').classList.add('hidden'));
-
-      document.getElementById('toggle-sim-mode').addEventListener('change', (e) => {
-        isSimMode = e.target.checked;
-        document.getElementById('sim-controls').classList.toggle('hidden', !isSimMode);
-        showToast(isSimMode ? "已開啟模擬行駛" : "切換回真實 GPS");
-      });
-      document.getElementById('sim-speed-slider').addEventListener('input', (e) => setSimSpeed(e.target.value));
 
       updateDisplay();
     });
