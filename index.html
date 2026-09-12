@@ -319,7 +319,7 @@
 
   <!-- 車資證明聯彈窗 (支援橫向自適應雙欄與捲動) -->
   <div id="modal-receipt" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] flex items-center justify-center p-2 sm:p-4 hidden overflow-y-auto">
-    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-xl p-3 sm:p-4 space-y-3 shadow-2xl my-auto max-h-[95vh] flex flex-col">
+    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-sm rounded-xl p-3 sm:p-4 space-y-3 shadow-2xl my-auto max-h-[95vh] flex flex-col">
       
       <div class="flex items-center justify-between border-b border-zinc-800 pb-2 flex-shrink-0">
         <div class="flex items-center gap-2">
@@ -333,14 +333,14 @@
         </button>
       </div>
 
-      <!-- 收據本體 (供截圖區域，橫向時為左右雙欄配置以節省垂直空間) -->
-      <div id="receipt-export-area" class="receipt-paper p-3 sm:p-4 shadow-lg rounded border border-zinc-300 bg-white flex-1 overflow-y-auto">
+      <!-- 收據本體 (直式比例適配 iPhone 16 Pro) -->
+      <div id="receipt-export-area" class="receipt-paper p-4 shadow-lg rounded border border-zinc-300 bg-white flex-1 overflow-y-auto mx-auto w-full max-w-[340px]">
         <div class="text-center font-bold text-sm sm:text-base border-b-2 border-dashed border-slate-300 pb-1 mb-2 text-slate-800">
           台灣計程車電子乘車證明單<br>
           <span class="text-[11px] text-slate-500 font-mono font-normal" id="receipt-print-time"></span>
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700 font-mono">
+        <div class="flex flex-col gap-4 text-xs text-slate-700 font-mono">
           <!-- 明細 -->
           <div class="space-y-1.5">
             <div class="flex justify-between"><span>行駛總里程：</span><span class="font-bold text-slate-900" id="rcpt-distance">0.00 km</span></div>
@@ -356,11 +356,11 @@
           </div>
 
           <!-- 地圖 -->
-          <div class="flex flex-col justify-between">
-            <div class="text-center text-[10px] font-bold text-slate-500 mb-1 tracking-widest flex items-center justify-center gap-1">
+          <div class="flex flex-col gap-1">
+            <div class="text-center text-[10px] font-bold text-slate-500 tracking-widest flex items-center justify-center gap-1">
               <i data-lucide="map-pin" class="w-3 h-3"></i> 行駛軌跡地圖
             </div>
-            <div id="receipt-map-wrapper" class="receipt-map-wrapper rounded border border-slate-300 overflow-hidden shadow-inner p-1 bg-white flex justify-center items-center h-32 sm:h-full">
+            <div id="receipt-map-wrapper" class="receipt-map-wrapper rounded border border-slate-300 overflow-hidden shadow-inner p-1 bg-white flex justify-center items-center h-56 w-full">
               <!-- Canvas 將由 JS 繪製 -->
             </div>
           </div>
@@ -419,6 +419,10 @@
       playPrinterSound() {
         if(!this.enabled) return; this.initContext();
         for(let i=0; i<15; i++) { this.beep(150 + Math.random()*50, this.ctx.currentTime + (i*0.14), 0.09, 'sawtooth'); }
+      }
+      playClick() {
+        if(!this.enabled) return; this.initContext();
+        this.beep(2000, this.ctx.currentTime, 0.03, 'sine');
       }
       beep(freq, startTime, duration, type = 'sine') {
         try {
@@ -713,6 +717,7 @@
     }
 
     function toggleNightSurcharge() {
+      audioEngine.playClick();
       isNightActive = !isNightActive;
       const delta = isNightActive ? currentConfig.nightSurcharge : -currentConfig.nightSurcharge;
       extraCharges += delta;
@@ -732,6 +737,7 @@
     }
 
     function toggleTollSurcharge() {
+      audioEngine.playClick();
       isTollActive = !isTollActive;
       const delta = isTollActive ? 50 : -50;
       extraCharges += delta;
@@ -753,7 +759,7 @@
     // 6. 真實地圖圖磚與軌跡 Canvas 渲染 (支援 html2canvas 截圖)
     async function renderReceiptMapCanvas() {
       const wrapper = document.getElementById('receipt-map-wrapper');
-      wrapper.innerHTML = '<canvas id="canvas-route-map" width="360" height="200" class="w-full h-auto rounded"></canvas>';
+      wrapper.innerHTML = '<canvas id="canvas-route-map" width="320" height="320" class="w-full h-auto rounded"></canvas>';
       const canvas = document.getElementById('canvas-route-map');
       const ctx = canvas.getContext('2d');
 
@@ -813,8 +819,8 @@
         const p = new Promise(resolve => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
-          // 使用純淨無浮水印、無文字標籤之極簡街道底圖 (CartoDB Light No Labels)
-          img.src = `https://a.basemaps.cartocdn.com/light_nolabels/${zoom}/${tile.tx}/${tile.ty}.png`;
+          // 使用 Google Maps 繁體中文街道底圖 (無浮水印)
+          img.src = `https://mt1.google.com/vt/lyrs=m&hl=zh-TW&x=${tile.tx}&y=${tile.ty}&z=${zoom}`;
           img.onload = () => resolve({ img, ...tile, success: true });
           img.onerror = () => resolve({ ...tile, success: false });
         });
@@ -885,6 +891,7 @@
 
     // 調用手機系統原生分享 (Web Share API) 或觸發下載
     async function exportImage() {
+      audioEngine.playClick();
       const node = document.getElementById('receipt-export-area');
       const btn = document.getElementById('btn-export-image');
       btn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> 處理中...';
@@ -955,6 +962,7 @@
     }
 
     function applyPreset(key, manual = false) {
+      audioEngine.playClick();
       if (!PRESETS[key]) return;
       currentConfig = { ...PRESETS[key] };
       document.getElementById('current-region-display').textContent = currentConfig.name;
@@ -975,6 +983,7 @@
     }
 
     async function toggleWakeLock() {
+      audioEngine.playClick();
       if ('wakeLock' in navigator) {
         try {
           if (wakeLock !== null) {
@@ -1024,7 +1033,10 @@
         }
       });
 
-      document.getElementById('btn-close-receipt').addEventListener('click', resetToVacantState);
+      document.getElementById('btn-close-receipt').addEventListener('click', () => {
+        audioEngine.playClick();
+        resetToVacantState();
+      });
       document.getElementById('btn-export-image').addEventListener('click', exportImage);
 
       document.getElementById('btn-sound-toggle').addEventListener('click', () => {
@@ -1033,10 +1045,17 @@
         document.getElementById('sound-icon').setAttribute('data-lucide', audioEngine.enabled ? 'volume-2' : 'volume-x');
         lucide.createIcons(); 
         showToast(audioEngine.enabled ? "音效開啓" : "音效靜音");
+        audioEngine.playClick();
       });
 
-      document.getElementById('btn-open-settings').addEventListener('click', () => document.getElementById('modal-settings').classList.remove('hidden'));
-      document.getElementById('btn-close-settings').addEventListener('click', () => document.getElementById('modal-settings').classList.add('hidden'));
+      document.getElementById('btn-open-settings').addEventListener('click', () => {
+        audioEngine.playClick();
+        document.getElementById('modal-settings').classList.remove('hidden');
+      });
+      document.getElementById('btn-close-settings').addEventListener('click', () => {
+        audioEngine.playClick();
+        document.getElementById('modal-settings').classList.add('hidden');
+      });
 
       updateDisplay();
     });
