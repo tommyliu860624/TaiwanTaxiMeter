@@ -321,8 +321,8 @@
           </div>
           <h3 class="font-bold text-sm sm:text-base text-white">乘車證明單 (電子收據)</h3>
         </div>
-        <button id="btn-export-image" class="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 text-[11px] bg-emerald-950/40 border border-emerald-800/50 px-2 py-1 rounded transition font-medium">
-          <i data-lucide="image" class="w-3.5 h-3.5"></i> 存成照片
+        <button id="btn-export-image" class="text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 text-[11px] bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-1.5 rounded-lg transition font-medium active:scale-95">
+          <i data-lucide="share" class="w-3.5 h-3.5"></i> 分享 / 儲存照片
         </button>
       </div>
 
@@ -806,7 +806,8 @@
         const p = new Promise(resolve => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
-          img.src = `https://a.basemaps.cartocdn.com/light_all/${zoom}/${tile.tx}/${tile.ty}.png`;
+          // 使用純淨無浮水印、無文字標籤之極簡街道底圖 (CartoDB Light No Labels)
+          img.src = `https://a.basemaps.cartocdn.com/light_nolabels/${zoom}/${tile.tx}/${tile.ty}.png`;
           img.onload = () => resolve({ img, ...tile, success: true });
           img.onerror = () => resolve({ ...tile, success: false });
         });
@@ -875,34 +876,75 @@
       ctx.stroke();
     }
 
-    // 完美匯出圖片
-    function exportImage() {
+    // 調用手機系統原生分享 (Web Share API) 或觸發下載
+    async function exportImage() {
       const node = document.getElementById('receipt-export-area');
       const btn = document.getElementById('btn-export-image');
       btn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> 處理中...';
-      showToast("正在產生照片...");
+      btn.disabled = true;
+      showToast("正在產生收據影像...");
       
-      html2canvas(node, { 
-        scale: 2, 
-        useCORS: true, 
-        backgroundColor: '#f8fafc',
-        onclone: function(clonedDoc) {
-          const clonedNode = clonedDoc.getElementById('receipt-export-area');
-          clonedNode.style.maxHeight = 'none';
-          clonedNode.style.overflow = 'visible';
-        }
-      }).then(canvas => {
-        const url = canvas.toDataURL("image/png");
-        const a = document.createElement('a'); 
-        a.href = url; 
-        a.download = `Taxi-Receipt-${Date.now()}.png`; 
-        a.click();
-        btn.innerHTML = '<i data-lucide="image" class="w-3.5 h-3.5"></i> 存成照片';
-        showToast("✅ 照片已儲存！");
-      }).catch(err => {
-        btn.innerHTML = '<i data-lucide="image" class="w-3.5 h-3.5"></i> 存成照片';
+      try {
+        const canvas = await html2canvas(node, { 
+          scale: 2, 
+          useCORS: true, 
+          backgroundColor: '#f8fafc',
+          onclone: function(clonedDoc) {
+            const clonedNode = clonedDoc.getElementById('receipt-export-area');
+            clonedNode.style.maxHeight = 'none';
+            clonedNode.style.overflow = 'visible';
+          }
+        });
+
+        const fileName = `Taxi-Receipt-${Date.now()}.png`;
+
+        // 將 Canvas 轉換為 Blob 檔案物件以支援原生分享
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            throw new Error("影像轉換失敗");
+          }
+          const file = new File([blob], fileName, { type: 'image/png' });
+
+          // 判斷瀏覽器是否支援調用原生分享功能 (iOS Safari, Android Chrome)
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                title: '計程車電子乘車證明單',
+                text: `計程車乘車證明單 (車資 NT$ ${totalFare})`,
+                files: [file]
+              });
+              showToast("✅ 已開啟系統分享！");
+            } catch (shareErr) {
+              if (shareErr.name !== 'AbortError') {
+                // 若非使用者手動取消，則降級為直接下載
+                triggerFileDownload(canvas, fileName);
+              }
+            }
+          } else {
+            // 不支援 Web Share 的環境（如電腦瀏覽器）自動降級為傳統下載
+            triggerFileDownload(canvas, fileName);
+          }
+
+          btn.innerHTML = '<i data-lucide="share" class="w-3.5 h-3.5"></i> 分享 / 儲存照片';
+          btn.disabled = false;
+          lucide.createIcons();
+        }, 'image/png');
+
+      } catch (err) {
+        btn.innerHTML = '<i data-lucide="share" class="w-3.5 h-3.5"></i> 分享 / 儲存照片';
+        btn.disabled = false;
+        lucide.createIcons();
         showToast("產生失敗: " + err.message);
-      });
+      }
+    }
+
+    function triggerFileDownload(canvas, fileName) {
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement('a'); 
+      a.href = url; 
+      a.download = fileName; 
+      a.click();
+      showToast("✅ 收據照片已儲存！");
     }
 
     function applyPreset(key, manual = false) {
