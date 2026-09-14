@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>TTM</title>
   
-  <!-- iOS 加入主畫面設定 -->
+  <!-- iOS 加入主畫面設定 (Standalone Web App) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TTM">
@@ -27,10 +27,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   
   <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     
     html, body {
       height: 100%;
@@ -46,10 +43,7 @@
     }
     
     /* 擬真 7段 LED / 車用儀表字體 */
-    .font-meter {
-      font-family: 'Chakra Petch', 'Share Tech Mono', monospace;
-      letter-spacing: 1px;
-    }
+    .font-meter { font-family: 'Chakra Petch', 'Share Tech Mono', monospace; letter-spacing: 1px; }
     
     /* 發光效果 */
     .glow-red { text-shadow: 0 0 12px rgba(239, 68, 68, 0.8), 0 0 24px rgba(239, 68, 68, 0.4); }
@@ -74,17 +68,15 @@
       padding-left: max(0.75rem, env(safe-area-inset-left));
       padding-right: max(0.75rem, env(safe-area-inset-right));
       padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
-      /* 動態島防護：垂直模式下額外增加間距 */
     }
     @media (orientation: portrait) {
       .safe-padding {
-        padding-top: calc(max(0.35rem, env(safe-area-inset-top)) + 0.5rem);
+        /* 加大動態島防護，避免與頂部狀態列重疊 */
+        padding-top: calc(max(0.35rem, env(safe-area-inset-top)) + 0.75rem);
       }
     }
     @media (orientation: landscape) {
-      .safe-padding {
-        padding-top: max(0.35rem, env(safe-area-inset-top));
-      }
+      .safe-padding { padding-top: max(0.35rem, env(safe-area-inset-top)); }
     }
 
     /* 收據熱感應紙質感與鋸齒 */
@@ -112,16 +104,17 @@
       background-image: linear-gradient(135deg, #f8fafc 50%, transparent 50%), linear-gradient(225deg, #f8fafc 50%, transparent 50%);
       background-position: left bottom;
     }
-    /* 輸出模式隱藏鋸齒，避免 html2canvas 渲染跑版 */
-    .export-mode::before, .export-mode::after {
-      display: none !important;
-    }
+    
+    /* 輸出模式：隱藏鋸齒與移除高度限制，避免 html2canvas 橫向截斷 */
+    .export-mode::before, .export-mode::after { display: none !important; }
+    .export-mode { max-height: none !important; overflow: visible !important; }
 
     /* 列印動畫 */
     #print-paper { transform: translateY(-100%); }
     .print-animate { transform: translateY(20px) !important; transition: transform 2.2s linear; }
   </style>
 </head>
+
 <body class="text-zinc-100 h-screen h-[100dvh] flex flex-col justify-between overflow-hidden safe-padding">
 
   <!-- 頂部極簡狀態列 -->
@@ -148,7 +141,6 @@
     </div>
   </header>
 
-  <!-- 實體跳表機本體 (響應式支援橫向與直向) -->
   <main class="w-full flex-1 flex flex-col justify-center min-h-0 py-0.5">
     <div class="meter-case rounded-xl p-2 sm:p-2.5 flex flex-col justify-between h-full min-h-0">
       
@@ -167,7 +159,7 @@
 
         <div class="flex items-center gap-2">
           <span id="lamp-stopped" class="hidden text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-950 text-red-500 border border-red-900 animate-pulse">
-            停止計費鎖定
+            停止計費
           </span>
           <span id="lamp-tracking" class="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800 flex items-center gap-1">
             <i data-lucide="map-pin" class="w-2.5 h-2.5"></i>
@@ -176,7 +168,7 @@
         </div>
       </div>
 
-      <!-- 中間核心數值顯示區 (支援橫/直轉換) -->
+      <!-- 中間核心數值顯示區 (完美適配橫直向) -->
       <div class="flex flex-col portrait:flex-col landscape:flex-row gap-2 my-1.5 flex-1 min-h-0 items-stretch">
         
         <!-- 大字體主機 -->
@@ -186,7 +178,7 @@
           <div class="flex justify-between items-center relative z-10 border-b border-zinc-800/80 pb-1.5">
             <span class="text-[10px] sm:text-xs font-bold tracking-widest text-red-500/80 uppercase">車資 FARE (TWD)</span>
             
-            <button id="btn-open-settings" class="flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30 hover:opacity-80 transition-opacity">
+            <button id="btn-open-settings" class="flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30 hover:opacity-80 transition-all">
               <i data-lucide="map" class="w-3 h-3 text-amber-500"></i>
               <span class="text-[11px] font-bold font-mono text-amber-400" id="current-region-display">北北基</span>
             </button>
@@ -263,6 +255,7 @@
       <!-- 底部鍵盤 -->
       <div class="grid grid-cols-4 landscape:grid-cols-12 gap-1.5 pt-1.5 border-t border-zinc-800/90 flex-shrink-0">
         
+        <!-- 起表 / 暫停按鈕 -->
         <button id="btn-start-trip" class="col-span-1 landscape:col-span-3 flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-bold text-[11px] sm:text-xs shadow-md shadow-red-950 active:scale-95 transition-all">
           <i id="btn-start-icon" data-lucide="play" class="w-4 h-4 fill-current"></i>
           <span id="btn-start-txt">起表開始</span>
@@ -299,11 +292,12 @@
     </div>
   </div>
 
-  <!-- 收據彈窗 (強制直式) -->
-  <div id="modal-receipt" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] flex items-center justify-center p-4 hidden overflow-y-auto">
-    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-[360px] rounded-xl p-3 shadow-2xl my-auto flex flex-col max-h-[90dvh]">
+  <!-- 收據彈窗 (直式單欄完美適配) -->
+  <div id="modal-receipt" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] flex items-center justify-center p-4 hidden">
+    <!-- 包裝容器，讓匯出時可以解除限制 -->
+    <div id="modal-receipt-inner" class="bg-zinc-900 border border-zinc-800 w-full max-w-[340px] rounded-xl p-3 shadow-2xl my-auto flex flex-col max-h-[90dvh] overflow-y-auto relative">
       
-      <div class="flex items-center justify-between border-b border-zinc-800 pb-2 mb-2 flex-shrink-0">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-2 mb-2 flex-shrink-0 sticky top-0 bg-zinc-900 z-30">
         <h3 class="font-bold text-[13px] text-white flex items-center gap-1"><i data-lucide="receipt" class="w-3.5 h-3.5 text-amber-400"></i>乘車證明</h3>
         <button id="btn-export-image" class="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 text-[11px] bg-emerald-950/40 border border-emerald-800/50 px-2 py-1 rounded transition font-medium active:scale-95">
           <i data-lucide="share" class="w-3 h-3"></i> 分享圖片
@@ -311,7 +305,7 @@
       </div>
 
       <!-- 直式收據本體 -->
-      <div id="receipt-export-area" class="receipt-paper p-4 shadow-lg rounded border border-zinc-300 bg-white overflow-y-auto w-full">
+      <div id="receipt-export-area" class="receipt-paper p-4 shadow-lg rounded border border-zinc-300 bg-white w-full flex-shrink-0">
         <div class="text-center font-bold text-[15px] border-b-2 border-dashed border-slate-300 pb-1.5 mb-2.5 text-slate-800 leading-tight">
           台灣計程車電子乘車證明單<br>
           <span class="text-[10px] text-slate-500 font-mono font-normal" id="receipt-print-time"></span>
@@ -333,14 +327,14 @@
 
           <div class="flex flex-col gap-1">
             <div class="text-center text-[10px] font-bold text-slate-500 tracking-widest">地圖軌跡</div>
-            <div id="receipt-map-wrapper" class="receipt-map-wrapper rounded border border-slate-300 shadow-inner p-1 bg-white flex justify-center items-center w-full aspect-square">
-              <!-- 1:1 Canvas -->
+            <div id="receipt-map-wrapper" class="rounded border border-slate-300 shadow-inner p-1 bg-white flex justify-center items-center w-full aspect-square">
+              <!-- 1:1 Canvas 生成區 -->
             </div>
           </div>
         </div>
       </div>
 
-      <div class="pt-2 flex-shrink-0">
+      <div class="pt-2 flex-shrink-0 sticky bottom-0 bg-zinc-900 z-30 border-t border-zinc-800 mt-2">
         <button id="btn-close-receipt" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 font-bold rounded-lg transition text-xs active:scale-95">
           完成交易 / 回復空車
         </button>
@@ -352,7 +346,7 @@
   <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-3 hidden">
     <div class="bg-zinc-900 border border-zinc-800 w-full max-w-[320px] rounded-xl p-4 space-y-3 shadow-2xl">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-2">
-        <h3 class="font-bold text-sm text-white">地區費率設定 (支援自動校正)</h3>
+        <h3 class="font-bold text-sm text-white">地區費率設定 (自動校正)</h3>
         <button id="btn-close-settings" class="p-1 text-zinc-400 hover:text-white rounded"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="grid grid-cols-3 gap-2">
@@ -375,8 +369,10 @@
   </div>
 
   <script>
+    // 安全抓取 DOM，避免 null 錯誤
     const safeGet = (id) => document.getElementById(id);
 
+    // 音效引擎
     class MeterAudioEngine {
       constructor() { this.ctx = null; this.enabled = true; }
       initContext() {
@@ -405,6 +401,7 @@
     }
     const audioEngine = new MeterAudioEngine();
 
+    // 9 大分區費率表
     const PRESETS = {
       taipei: { name: '北北基', baseFare: 85, baseDist: 1250, stepFare: 5, stepDist: 200, idleSeconds: 60, idleSpeed: 5, nightSurcharge: 20 },
       taoyuan: { name: '桃園市', baseFare: 90, baseDist: 1250, stepFare: 5, stepDist: 200, idleSeconds: 60, idleSpeed: 5, nightSurcharge: 20 },
@@ -418,6 +415,7 @@
     };
     let currentConfig = { ...PRESETS.taipei };
 
+    // 狀態變數
     let tripStatus = 'VACANT'; // VACANT, HIRED, PAUSED, STOPPED
     let baseCalculatedFare = 85; 
     let totalFare = 85;          
@@ -446,7 +444,7 @@
     async function getRegionByGps(lat, lng) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s JIT 超時防呆
+        const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s JIT 超時防呆，避免無網路卡死
         
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
           signal: controller.signal,
@@ -456,7 +454,7 @@
         const data = await res.json();
         return data.address.city || data.address.county || data.address.town || "";
       } catch (err) {
-        return null; // 超時或無網路
+        return null; 
       }
     }
 
@@ -575,13 +573,15 @@
 
     async function actionStartTrip() {
       const btnStart = safeGet('btn-start-trip');
-      const startTxt = safeGet('btn-start-txt');
-      const startIcon = safeGet('btn-start-icon');
+      const btnSettings = safeGet('btn-open-settings');
       
       if (tripStatus === 'VACANT') {
         audioEngine.playClick();
         
-        // JIT 鎖定費率
+        // 鎖定費率按鈕，防止計費中切換作弊
+        btnSettings.classList.add('opacity-50', 'cursor-not-allowed');
+        
+        // JIT 鎖定費率 (等待 1.5s 如果沒有網路就沿用目前)
         btnStart.disabled = true;
         const originalHtml = btnStart.innerHTML;
         btnStart.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>鎖定費率中</span>';
@@ -718,7 +718,7 @@
 
     async function renderReceiptMapCanvas() {
       const wrapper = safeGet('receipt-map-wrapper');
-      // 動態抓取正方形容器寬度
+      // 動態抓取正方形容器寬度 (確保直式單欄正確比例)
       const size = wrapper.clientWidth - 8; 
       wrapper.innerHTML = `<canvas id="canvas-route-map" width="${size}" height="${size}" class="w-full h-full rounded"></canvas>`;
       const canvas = safeGet('canvas-route-map');
@@ -738,7 +738,7 @@
         if (pt.lng < minLng) minLng = pt.lng; if (pt.lng > maxLng) maxLng = pt.lng;
       });
 
-      // 30% Bounding Box Padding 防出界
+      // 30% Bounding Box Padding 防出界 (解決地圖超出問題)
       const latDiff = Math.abs(maxLat - minLat); const lngDiff = Math.abs(maxLng - minLng);
       const latPad = (latDiff === 0 ? 0.005 : latDiff * 0.3);
       const lngPad = (lngDiff === 0 ? 0.005 : lngDiff * 0.3);
@@ -762,7 +762,7 @@
       const centerTileY = lat2tile(centerLat, zoom);
       const tilePromises = [];
 
-      // 載入 3x3 圖磚 (Google Maps 繁中無浮水印)
+      // 載入 3x3 圖磚 (Google Maps 繁中，無浮水印 lyrs=m)
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           const tx = centerTileX + dx, ty = centerTileY + dy;
@@ -812,14 +812,27 @@
     async function exportImage() {
       audioEngine.playClick();
       const node = safeGet('receipt-export-area');
+      const modalInner = safeGet('modal-receipt-inner');
       const btn = safeGet('btn-export-image');
       btn.innerHTML = '<i data-lucide="loader" class="w-3 h-3 animate-spin"></i> 處理中';
       btn.disabled = true;
-      node.classList.add('export-mode'); // 隱藏鋸齒避免跑版
+
+      // 關鍵修正：暫時移除高度與滾動條限制，讓 html2canvas 在橫向也能抓取完整長度
+      modalInner.classList.remove('max-h-[90dvh]', 'overflow-y-auto');
+      node.classList.add('export-mode'); // 隱藏鋸齒與釋放高度
       
       try {
-        const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#f8fafc' });
+        const canvas = await html2canvas(node, { 
+          scale: 2, 
+          useCORS: true, 
+          backgroundColor: '#f8fafc',
+          windowHeight: node.scrollHeight // 強制指定渲染高度
+        });
+        
+        // 恢復原狀
         node.classList.remove('export-mode');
+        modalInner.classList.add('max-h-[90dvh]', 'overflow-y-auto');
+        
         const fileName = `Taxi-Receipt-${Date.now()}.png`;
 
         canvas.toBlob(async (blob) => {
@@ -838,9 +851,11 @@
         }, 'image/png');
 
       } catch (err) {
+        // 錯誤發生也要恢復原狀
         node.classList.remove('export-mode');
+        modalInner.classList.add('max-h-[90dvh]', 'overflow-y-auto');
         btn.innerHTML = '<i data-lucide="share" class="w-3 h-3"></i> 分享圖片'; btn.disabled = false; lucide.createIcons();
-        showToast("產生失敗: Google Map跨域限制"); // 若 Google 阻擋 CORS 會提示
+        showToast("產生失敗: Google Map跨域限制");
       }
     }
 
@@ -889,6 +904,9 @@
       const btnPrint = safeGet('btn-print-receipt');
       btnPrint.className = "col-span-1 landscape:col-span-3 flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-[11px] sm:text-xs cursor-not-allowed";
       btnPrint.disabled = true;
+
+      // 解鎖費率按鈕
+      safeGet('btn-open-settings').classList.remove('opacity-50', 'cursor-not-allowed');
 
       lucide.createIcons(); updateDisplay();
     }
@@ -947,7 +965,15 @@
         lucide.createIcons(); showToast(audioEngine.enabled ? "音效開啓" : "音效靜音"); audioEngine.playClick();
       });
 
-      safeGet('btn-open-settings')?.addEventListener('click', () => { audioEngine.playClick(); safeGet('modal-settings').classList.remove('hidden'); });
+      safeGet('btn-open-settings')?.addEventListener('click', () => {
+        if (tripStatus !== 'VACANT') {
+          audioEngine.playClick();
+          showToast("⚠️ 計費中無法切換地區費率");
+          return;
+        }
+        audioEngine.playClick(); 
+        safeGet('modal-settings').classList.remove('hidden'); 
+      });
       safeGet('btn-close-settings')?.addEventListener('click', () => { audioEngine.playClick(); safeGet('modal-settings').classList.add('hidden'); });
 
       updateDisplay();
