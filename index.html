@@ -77,13 +77,6 @@
       padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
     }
 
-    /* 直式提示遮罩：若使用者拿直式會提示旋轉 */
-    @media screen and (orientation: portrait) {
-      #portrait-warning {
-        display: flex !important;
-      }
-    }
-
     /* 收據熱感應紙質感與鋸齒 */
     .receipt-paper {
       background-color: #f8fafc;
@@ -116,17 +109,6 @@
   </style>
 </head>
 <body class="text-zinc-100 h-screen h-[100dvh] flex flex-col justify-between overflow-hidden safe-padding">
-
-  <!-- 鎖定橫向提示遮罩 (當拿直時強制提示旋轉) -->
-  <div id="portrait-warning" class="fixed inset-0 bg-black/95 z-[90] hidden flex-col items-center justify-center p-6 text-center">
-    <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 animate-bounce">
-      <i data-lucide="smartphone" class="w-9 h-9 rotate-90"></i>
-    </div>
-    <h2 class="text-lg font-bold text-white mb-2">請將手機旋轉為橫向</h2>
-    <p class="text-xs text-zinc-400 max-w-xs leading-relaxed">
-      本車機專為真實橫式座艙與 iPhone 16 Pro 滿版設計，旋轉手機即可享受無滾動的專業跳表體驗。
-    </p>
-  </div>
 
   <!-- 頂部極簡狀態列 -->
   <header class="w-full flex items-center justify-between py-1 text-xs text-zinc-400 flex-shrink-0">
@@ -184,10 +166,10 @@
       </div>
 
       <!-- 中間核心數值顯示區 (Flex 自動均勻填滿) -->
-      <div class="grid grid-cols-12 gap-2 my-1.5 flex-1 min-h-0 items-stretch">
+      <div class="flex flex-col landscape:flex-row gap-2 my-1.5 flex-1 min-h-0 items-stretch">
         
-        <!-- 左側：超大跳表金額主機 -->
-        <div class="col-span-7 led-panel rounded-lg p-2 sm:p-3 border border-zinc-800 relative flex flex-col justify-between overflow-hidden">
+        <!-- 左/上側：超大跳表金額主機 -->
+        <div class="landscape:w-7/12 flex-1 led-panel rounded-lg p-2 sm:p-3 border border-zinc-800 relative flex flex-col justify-between overflow-hidden">
           <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none"></div>
 
           <div class="flex justify-between items-center relative z-10 border-b border-zinc-800/80 pb-1">
@@ -217,8 +199,8 @@
           </div>
         </div>
 
-        <!-- 右側：行車儀表 (四格整合) -->
-        <div class="col-span-5 grid grid-cols-2 gap-1.5 items-stretch">
+        <!-- 右/下側：行車儀表 (四格整合) -->
+        <div class="landscape:w-5/12 grid grid-cols-2 gap-1.5 items-stretch portrait:h-[40%]">
           
           <div class="led-panel p-1.5 rounded-lg border border-zinc-800 flex flex-col justify-between">
             <div class="text-[10px] text-zinc-400 flex items-center justify-between">
@@ -268,36 +250,36 @@
       </div>
 
       <!-- 下排：操作按鈕鍵盤 (橫式單列，按鈕均勻分佈) -->
-      <div class="grid grid-cols-12 gap-1.5 pt-1 border-t border-zinc-800/90 flex-shrink-0">
+      <!-- 下排：操作按鈕鍵盤 -->
+      <div class="grid grid-cols-4 landscape:grid-cols-12 gap-1.5 pt-1 border-t border-zinc-800/90 flex-shrink-0">
         
-        <!-- 步驟1: 計程計時 -->
-        <button id="btn-start-trip" class="col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-xs shadow-md shadow-red-950 active:scale-[0.98] transition-all">
-          <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
-          <span>起表開始</span>
+        <!-- 步驟1: 計程計時 / 暫停 -->
+        <button id="btn-start-trip" class="col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-[11px] sm:text-xs shadow-md shadow-red-950 active:scale-[0.98] transition-all">
+          <i id="btn-start-icon" data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+          <span id="btn-start-txt">起表開始</span>
         </button>
 
         <!-- 步驟2: 停止計費 -->
-        <button id="btn-stop-trip" disabled class="col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed transition-all">
+        <button id="btn-stop-trip" disabled class="col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-[11px] sm:text-xs cursor-not-allowed transition-all">
           <i data-lucide="square" class="w-3.5 h-3.5"></i>
           <span>停止計費</span>
         </button>
 
         <!-- 步驟3: 列印收據 -->
-        <button id="btn-print-receipt" disabled class="col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed transition-all">
+        <button id="btn-print-receipt" disabled class="col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-[11px] sm:text-xs cursor-not-allowed transition-all">
           <i data-lucide="printer" class="w-3.5 h-3.5"></i>
           <span>列印收據</span>
         </button>
 
         <!-- 附加費用切換 (夜間 & 國道) -->
-        <div class="col-span-3 bg-zinc-950/80 border border-zinc-800/80 rounded-lg p-0.5 flex items-center gap-1 text-[11px]">
-          <button id="btn-toggle-night" class="flex-1 py-1 px-0.5 text-center rounded bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
+        <div class="col-span-1 landscape:col-span-3 bg-zinc-950/80 border border-zinc-800/80 rounded-lg p-0.5 flex flex-col landscape:flex-row items-center gap-0.5 landscape:gap-1 text-[10px] sm:text-[11px]">
+          <button id="btn-toggle-night" class="flex-1 w-full py-0.5 landscape:py-1 px-0.5 text-center rounded bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
             夜+$20
           </button>
-          <button id="btn-toggle-toll" class="flex-1 py-1 px-0.5 text-center rounded bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
+          <button id="btn-toggle-toll" class="flex-1 w-full py-0.5 landscape:py-1 px-0.5 text-center rounded bg-zinc-800 text-zinc-400 font-medium active:scale-95 transition-all border border-transparent">
             道+$50
           </button>
         </div>
-
       </div>
     </div>
   </main>
@@ -435,6 +417,9 @@
     }
     const audioEngine = new MeterAudioEngine();
 
+    // 輔助函式：安全取得 DOM 元素
+    const safeGet = (id) => document.getElementById(id);
+
     // 2. 費率設定與狀態變數
     const PRESETS = {
       taipei: { name: '北北基', baseFare: 85, baseDist: 1250, stepFare: 5, stepDist: 200, idleSeconds: 60, idleSpeed: 5, nightSurcharge: 20 },
@@ -516,6 +501,9 @@
         }
         lastPosition = { lat: latitude, lon: longitude, time: now };
         evaluateFare();
+      } else if (tripStatus === 'PAUSED') {
+        // 暫停時，持續更新最後位置，避免恢復時距離暴衝
+        lastPosition = { lat: latitude, lon: longitude, time: Date.now() };
       }
     }
 
@@ -581,69 +569,119 @@
       let progress = Math.min(100, Math.round(Math.max(distProgRaw, idleProgRaw) * 100));
       
       document.getElementById('jump-progress-bar').style.width = `${progress}%`;
-      if (tripStatus === 'HIRED') {
+      if (tripStatus === 'HIRED' || tripStatus === 'PAUSED') {
         document.getElementById('jump-progress-label').textContent = `${Math.round(distRemaining)}m 或 ${Math.round(idleRemaining)}s`;
       } else {
         document.getElementById('jump-progress-label').textContent = `待命中`;
       }
     }
 
-    // 5. 按鈕流程：起表 -> 停止計費 -> 列印收據
+    // 5. 按鈕流程：起表/暫停 -> 停止計費 -> 列印收據
     function actionStartTrip() {
-      tripStatus = 'HIRED';
-      tripStartTime = Date.now();
-      totalDistanceMeters = 0;
-      accumulatedIdleSeconds = 0;
-      routeCoordinates = [];
-
-      if (latestGpsPosition) {
-        routeCoordinates.push({ lat: latestGpsPosition.lat, lng: latestGpsPosition.lng });
-        lastPosition = { lat: latestGpsPosition.lat, lon: latestGpsPosition.lng, time: Date.now() };
-      } else {
-        lastPosition = null;
-      }
-
-      baseCalculatedFare = currentConfig.baseFare;
-      totalFare = baseCalculatedFare + extraCharges;
-
-      document.getElementById('lamp-empty').className = "w-2.5 h-2.5 rounded-full bg-zinc-700";
-      document.getElementById('lamp-empty-txt').className = "font-bold text-zinc-600 tracking-wider text-[11px]";
-      document.getElementById('lamp-hired').className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]";
-      document.getElementById('lamp-hired-txt').className = "font-bold text-red-500 tracking-wider text-[11px]";
-      document.getElementById('lamp-stopped').classList.add('hidden');
-      document.getElementById('tracking-txt').textContent = "記錄中";
-
-      const btnStart = document.getElementById('btn-start-trip');
-      btnStart.disabled = true;
-      btnStart.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed";
+      const btnStart = safeGet('btn-start-trip');
+      const startTxt = safeGet('btn-start-txt');
+      const startIcon = safeGet('btn-start-icon');
       
-      const btnStop = document.getElementById('btn-stop-trip');
-      btnStop.disabled = false;
-      btnStop.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-amber-950 font-bold text-xs shadow-md shadow-amber-950/50 active:scale-[0.98] transition-all";
+      if (tripStatus === 'VACANT') {
+        tripStatus = 'HIRED';
+        tripStartTime = Date.now();
+        totalDistanceMeters = 0;
+        accumulatedIdleSeconds = 0;
+        routeCoordinates = [];
 
-      document.getElementById('btn-print-receipt').disabled = true;
+        if (latestGpsPosition) {
+          routeCoordinates.push({ lat: latestGpsPosition.lat, lng: latestGpsPosition.lng });
+          lastPosition = { lat: latestGpsPosition.lat, lon: latestGpsPosition.lng, time: Date.now() };
+        } else {
+          lastPosition = null;
+        }
 
-      audioEngine.playTripStart();
+        baseCalculatedFare = currentConfig.baseFare;
+        totalFare = baseCalculatedFare + extraCharges;
+
+        safeGet('lamp-empty')?.setAttribute('class', "w-2.5 h-2.5 rounded-full bg-zinc-700");
+        safeGet('lamp-empty-txt')?.setAttribute('class', "font-bold text-zinc-600 tracking-wider text-[11px]");
+        safeGet('lamp-hired')?.setAttribute('class', "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]");
+        safeGet('lamp-hired-txt')?.setAttribute('class', "font-bold text-red-500 tracking-wider text-[11px]");
+        safeGet('lamp-hired-txt').textContent = "營業 HIRED";
+        safeGet('lamp-stopped')?.classList.add('hidden');
+        safeGet('tracking-txt').textContent = "記錄中";
+
+        if (btnStart) {
+          startTxt.textContent = "暫停計費";
+          startIcon.setAttribute('data-lucide', 'pause');
+          btnStart.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 font-bold text-[11px] sm:text-xs shadow-md shadow-amber-950/50 active:scale-[0.98] transition-all";
+        }
+        
+        const btnStop = safeGet('btn-stop-trip');
+        if (btnStop) {
+          btnStop.disabled = false;
+          btnStop.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-[11px] sm:text-xs shadow-md active:scale-[0.98] transition-all";
+        }
+
+        safeGet('btn-print-receipt').disabled = true;
+        audioEngine.playTripStart();
+        showToast("🚕 起表開始計費");
+
+      } else if (tripStatus === 'HIRED') {
+        tripStatus = 'PAUSED';
+        if (btnStart) {
+          startTxt.textContent = "繼續計費";
+          startIcon.setAttribute('data-lucide', 'play');
+          btnStart.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-emerald-950 font-bold text-[11px] sm:text-xs shadow-md shadow-emerald-950/50 active:scale-[0.98] transition-all";
+        }
+        safeGet('lamp-hired')?.setAttribute('class', "w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]");
+        safeGet('lamp-hired-txt').textContent = "暫停 PAUSED";
+        audioEngine.playClick();
+        showToast("⏸️ 車資計算已暫停");
+
+      } else if (tripStatus === 'PAUSED') {
+        tripStatus = 'HIRED';
+        if (latestGpsPosition) {
+          lastPosition = { lat: latestGpsPosition.lat, lon: latestGpsPosition.lng, time: Date.now() };
+        }
+        if (btnStart) {
+          startTxt.textContent = "暫停計費";
+          startIcon.setAttribute('data-lucide', 'pause');
+          btnStart.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 font-bold text-[11px] sm:text-xs shadow-md shadow-amber-950/50 active:scale-[0.98] transition-all";
+        }
+        safeGet('lamp-hired')?.setAttribute('class', "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]");
+        safeGet('lamp-hired-txt').textContent = "營業 HIRED";
+        audioEngine.playClick();
+        showToast("▶️ 恢復計費");
+      }
+      
+      lucide.createIcons();
       updateDisplay();
       requestWakeLock();
-      showToast("🚕 起表開始計費");
     }
 
     function actionStopTrip() {
-      if (tripStatus !== 'HIRED') return;
+      if (tripStatus !== 'HIRED' && tripStatus !== 'PAUSED') return;
       tripStatus = 'STOPPED';
       tripEndTime = Date.now();
       
       audioEngine.playTripStop();
-      document.getElementById('lamp-stopped').classList.remove('hidden');
+      safeGet('lamp-stopped')?.classList.remove('hidden');
+      safeGet('lamp-hired-txt').textContent = "營業 HIRED"; // 重置文字
 
-      const btnStop = document.getElementById('btn-stop-trip');
-      btnStop.disabled = true;
-      btnStop.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed";
+      const btnStart = safeGet('btn-start-trip');
+      if(btnStart) {
+          btnStart.disabled = true;
+          btnStart.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-[11px] sm:text-xs cursor-not-allowed";
+      }
 
-      const btnPrint = document.getElementById('btn-print-receipt');
-      btnPrint.disabled = false;
-      btnPrint.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-emerald-950 font-bold text-xs shadow-md shadow-emerald-950/50 active:scale-[0.98] transition-all";
+      const btnStop = safeGet('btn-stop-trip');
+      if (btnStop) {
+        btnStop.disabled = true;
+        btnStop.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-[11px] sm:text-xs cursor-not-allowed";
+      }
+
+      const btnPrint = safeGet('btn-print-receipt');
+      if (btnPrint) {
+        btnPrint.disabled = false;
+        btnPrint.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-cyan-950 font-bold text-[11px] sm:text-xs shadow-md shadow-cyan-950/50 active:scale-[0.98] transition-all";
+      }
 
       updateDisplay();
       showToast("🛑 已停止計費");
@@ -690,7 +728,7 @@
     }
 
     function resetToVacantState() {
-      document.getElementById('modal-receipt').classList.add('hidden');
+      safeGet('modal-receipt')?.classList.add('hidden');
       tripStatus = 'VACANT';
       totalDistanceMeters = 0; 
       accumulatedIdleSeconds = 0; 
@@ -698,21 +736,29 @@
       baseCalculatedFare = currentConfig.baseFare;
       totalFare = baseCalculatedFare + extraCharges;
       
-      document.getElementById('lamp-empty').className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]";
-      document.getElementById('lamp-empty-txt').className = "font-bold text-emerald-400 tracking-wider text-[11px]";
-      document.getElementById('lamp-hired').className = "w-2.5 h-2.5 rounded-full bg-zinc-700";
-      document.getElementById('lamp-hired-txt').className = "font-bold text-zinc-600 tracking-wider text-[11px]";
-      document.getElementById('lamp-stopped').classList.add('hidden');
-      document.getElementById('tracking-txt').textContent = "GPS待命";
+      safeGet('lamp-empty')?.setAttribute('class', "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]");
+      safeGet('lamp-empty-txt')?.setAttribute('class', "font-bold text-emerald-400 tracking-wider text-[11px]");
+      safeGet('lamp-hired')?.setAttribute('class', "w-2.5 h-2.5 rounded-full bg-zinc-700");
+      safeGet('lamp-hired-txt')?.setAttribute('class', "font-bold text-zinc-600 tracking-wider text-[11px]");
+      safeGet('lamp-hired-txt').textContent = "營業 HIRED";
+      safeGet('lamp-stopped')?.classList.add('hidden');
+      safeGet('tracking-txt').textContent = "GPS待命";
 
-      const btnStart = document.getElementById('btn-start-trip');
-      btnStart.disabled = false;
-      btnStart.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-bold text-xs shadow-md shadow-red-950 active:scale-[0.98] transition-all";
+      const btnStart = safeGet('btn-start-trip');
+      if (btnStart) {
+        btnStart.disabled = false;
+        safeGet('btn-start-txt').textContent = "起表開始";
+        safeGet('btn-start-icon').setAttribute('data-lucide', 'play');
+        btnStart.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-bold text-[11px] sm:text-xs shadow-md shadow-red-950 active:scale-[0.98] transition-all";
+      }
       
-      const btnPrint = document.getElementById('btn-print-receipt');
-      btnPrint.className = "col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed";
-      btnPrint.disabled = true;
+      const btnPrint = safeGet('btn-print-receipt');
+      if (btnPrint) {
+        btnPrint.className = "col-span-1 landscape:col-span-3 flex items-center justify-center gap-1 py-2 px-1 rounded-lg bg-zinc-800 text-zinc-500 font-bold text-[11px] sm:text-xs cursor-not-allowed";
+        btnPrint.disabled = true;
+      }
 
+      lucide.createIcons();
       updateDisplay();
     }
 
@@ -782,6 +828,19 @@
         if (pt.lng > maxLng) maxLng = pt.lng;
       });
 
+      // 增加邊界緩衝區 (Padding)，確保軌跡不會畫出界
+      const latDiff = Math.abs(maxLat - minLat);
+      const lngDiff = Math.abs(maxLng - minLng);
+      const latPad = (latDiff === 0 ? 0.005 : latDiff * 0.3);
+      const lngPad = (lngDiff === 0 ? 0.005 : lngDiff * 0.3);
+      
+      minLat -= latPad; maxLat += latPad;
+      minLng -= lngPad; maxLng += lngPad;
+
+      const paddedLatDiff = Math.abs(maxLat - minLat);
+      const paddedLngDiff = Math.abs(maxLng - minLng);
+      const maxDiff = Math.max(paddedLatDiff, paddedLngDiff);
+
       const centerLat = (minLat + maxLat) / 2;
       const centerLng = (minLng + maxLng) / 2;
 
@@ -794,10 +853,9 @@
       }
 
       let zoom = 16;
-      const latDiff = Math.abs(maxLat - minLat);
-      const lngDiff = Math.abs(maxLng - minLng);
-      const maxDiff = Math.max(latDiff, lngDiff);
-      if (maxDiff > 0.1) zoom = 12;
+      if (maxDiff > 0.4) zoom = 10;
+      else if (maxDiff > 0.2) zoom = 11;
+      else if (maxDiff > 0.1) zoom = 12;
       else if (maxDiff > 0.05) zoom = 13;
       else if (maxDiff > 0.02) zoom = 14;
       else if (maxDiff > 0.008) zoom = 15;
